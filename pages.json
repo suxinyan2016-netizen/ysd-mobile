@@ -1,0 +1,53 @@
+{
+  "pages": [
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/parcel-incoming/index",
+      "style": {
+        "navigationBarTitleText": "待收包裹",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/parcel-leaving/index",
+      "style": {
+        "navigationBarTitleText": "待发包裹",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/parcel-inspect/index",
+      "style": {
+        "navigationBarTitleText": "验收包裹"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "YSD包裹管理",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F8F8F8"
+  },
+  "tabBar": {
+    "color": "#7A7E83",
+    "selectedColor": "#409EFF",
+    "borderStyle": "black",
+    "backgroundColor": "#FFFFFF",
+    "list": [
+      {
+        "pagePath": "pages/parcel-incoming/index",
+        "text": "待收"
+      },
+      {
+        "pagePath": "pages/parcel-leaving/index",
+        "text": "待发"
+      }
+    ]
+  }
+}

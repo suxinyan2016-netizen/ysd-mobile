@@ -1,0 +1,1004 @@
+<template>
+  <view class="page-container">
+    <!-- 步骤指示器 -->
+    <view class="step-indicator">
+      <text v-if="currentStep === 1">包裹信息</text>
+      <text v-else>商品 {{ currentItemIndex + 1 }} / {{ itemCount }}</text>
+    </view>
+    
+    <!-- Step 1: 包裹信息 -->
+    <scroll-view v-if="currentStep === 1" class="step-content" scroll-y>
+      <!-- 包裹基本信息 -->
+      <view class="info-card">
+        <view class="info-row">
+          <text class="label">包裹号:</text>
+          <text class="value">{{ parcel.packageNo }}</text>
+        </view>
+        <view class="info-row">
+          <text class="label">Process ID:</text>
+          <text class="value">{{ parcel.processId || '-' }}</text>
+        </view>
+      </view>
+      
+      <!-- 收货外观图片（只读） -->
+      <view class="section">
+        <text class="section-title">收货外观 (Appearance after received)</text>
+        <view class="photo-list">
+          <view 
+            v-for="(img, index) in receiverImages"
+            :key="index"
+            class="photo-item"
+            @click="previewImageFull(img.imageUrl)"
+          >
+            <image :src="img.thumbnailUrl || img.imageUrl" mode="aspectFill" />
+            <view class="delete-btn" @click.stop="removeReceiverImage(index)">✕</view>
+          </view>
+          <view class="add-photo" @click="chooseReceiverImage">
+            <text class="add-icon">+</text>
+            <text class="add-text">添加照片</text>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 装箱单图片（可上传） -->
+      <view class="section">
+        <text class="section-title">装箱单 (Packing List)</text>
+        <view class="photo-list">
+          <view 
+            v-for="(img, index) in packingListImages"
+            :key="index"
+            class="photo-item"
+            @click="previewImageFull(img.imageUrl)"
+          >
+            <image :src="img.thumbnailUrl || img.imageUrl" mode="aspectFill" />
+            <view class="delete-btn" @click.stop="removePackingImage(index)">✕</view>
+          </view>
+          <view class="add-photo" @click="choosePackingImage">
+            <text class="add-icon">+</text>
+            <text class="add-text">添加照片</text>
+          </view>
+        </view>
+      </view>
+      
+      <view class="action-btns">
+        <button class="btn btn-cancel" @click="goBack">取消</button>
+        <button class="btn btn-primary" @click="nextStep">下一步</button>
+      </view>
+    </scroll-view>
+    
+    <!-- Step 2+: 商品验收 -->
+    <scroll-view v-else-if="currentItem" class="step-content" scroll-y>
+      <!-- 商品信息表单 -->
+      <view class="form-card">
+        <view class="form-item">
+          <text class="form-label">商品编号 (Item No)</text>
+          <text class="form-value">{{ currentItem.itemNo || '-' }}</text>
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">数量 (Qty) *</text>
+          <input 
+            class="form-input" 
+            type="digit" 
+            v-model="itemForm.qty"
+            placeholder="请输入数量"
+            @blur="validateQty"
+          />
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">客户反馈 (Customer Feedback)</text>
+          <text class="form-value">{{ currentItem.customerFeedback || '-' }}</text>
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">拆包状态 (Unpacked Status)</text>
+          <radio-group class="radio-group" @change="onUnpackedChange">
+            <label class="radio-item">
+              <radio value="1" :checked="itemForm.isUnpacked === 1" />
+              <text>Unpacked</text>
+            </label>
+            <label class="radio-item">
+              <radio value="0" :checked="itemForm.isUnpacked === 0" />
+              <text>Packed</text>
+            </label>
+          </radio-group>
+        </view>
+        
+        <view class="form-item">
+          <text class="form-label">IQC结果 (IQC Result)</text>
+          <textarea 
+            class="form-textarea" 
+            v-model="itemForm.iqcResult"
+            placeholder="请输入IQC结果"
+            maxlength="500"
+          />
+        </view>
+      </view>
+      
+      <!-- 商品图片上传 -->
+      <view class="section">
+        <text class="section-title">商品图片 (Item Images)</text>
+        <view class="photo-list">
+          <view 
+            v-for="(img, index) in itemImages"
+            :key="index"
+            class="photo-item"
+            @click="previewImageFull(img.imageUrl)"
+          >
+            <image :src="img.thumbnailUrl || img.imageUrl" mode="aspectFill" />
+            <view class="delete-btn" @click.stop="removeItemImage(index)">✕</view>
+          </view>
+          <view class="add-photo" @click="chooseItemImage">
+            <text class="add-icon">+</text>
+            <text class="add-text">添加照片</text>
+          </view>
+        </view>
+      </view>
+      
+      <!-- 操作按钮 -->
+      <view class="action-btns">
+        <button class="btn btn-default" @click="previousStep">上一步</button>
+        <button 
+          v-if="currentItemIndex < itemCount - 1"
+          class="btn btn-primary" 
+          @click="nextStep"
+        >
+          下一步
+        </button>
+        <template v-else>
+          <button class="btn btn-success" @click="handleSave">保存</button>
+          <button class="btn btn-warning" @click="handleSubmit">提交</button>
+        </template>
+      </view>
+    </scroll-view>
+    
+    <!-- 无商品提示 -->
+    <view v-else class="empty-state">
+      <text class="empty-icon">📦</text>
+      <text class="empty-text">暂无商品需要验收</text>
+    </view>
+  </view>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
+import { queryInfoApi, updateItem, updateParcel } from '@/api/parcel'
+import { getGroupedImages, uploadImage, deleteImage, checkImageLimit } from '@/api/image'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+
+const parcel = ref({})
+const currentStep = ref(1)
+const currentItemIndex = ref(0)
+
+// 图片数据
+const receiverImages = ref([])
+const packingListImages = ref([])
+const itemImages = ref([])
+
+// 当前商品表单数据
+const itemForm = ref({
+  qty: null,
+  customerFeedback: '',
+  isUnpacked: 0,
+  iqcResult: ''
+})
+
+// 计算属性
+const itemCount = computed(() => {
+  const items = parcel.value.items || parcel.value.itemList || []
+  return items.length
+})
+
+const currentItem = computed(() => {
+  const items = parcel.value.items || parcel.value.itemList || []
+  return items[currentItemIndex.value]
+})
+
+onLoad((options) => {
+  if (options.parcelId) {
+    loadParcelDetail(options.parcelId)
+  }
+})
+
+async function loadParcelDetail(parcelId) {
+  try {
+    const result = await queryInfoApi(parcelId)
+    if (result.code === 1 && result.data) {
+      parcel.value = result.data
+      // 加载图片
+      await loadImages(parcelId)
+    } else {
+      uni.showToast({
+        title: result.msg || '加载失败',
+        icon: 'none'
+      })
+    }
+  } catch (error) {
+    console.error('加载包裹详情失败:', error)
+    uni.showToast({
+      title: '加载失败',
+      icon: 'none'
+    })
+  }
+}
+
+// 加载图片
+async function loadImages(parcelId) {
+  try {
+    console.log('开始加载图片, parcelId:', parcelId)
+    const result = await getGroupedImages('PARCEL', parcelId)
+    console.log('图片API返回结果:', result)
+    
+    if (result.code === 1 && result.data) {
+      const groupedImages = result.data
+      console.log('分组图片数据:', groupedImages)
+      
+      // 加载收货外观图片 (PACKAGE_RECEIVER)
+      if (groupedImages.PACKAGE_RECEIVER && Array.isArray(groupedImages.PACKAGE_RECEIVER)) {
+        receiverImages.value = groupedImages.PACKAGE_RECEIVER.map(img => ({
+          id: img.id,
+          imageUrl: img.imageUrl,
+          thumbnailUrl: img.thumbnailUrl,
+          uploaded: true
+        }))
+        console.log('收货外观图片已加载:', receiverImages.value)
+      } else {
+        console.log('没有找到PACKAGE_RECEIVER图片')
+      }
+      
+      // 加载装箱单图片 (PACKING_LIST)
+      if (groupedImages.PACKING_LIST && Array.isArray(groupedImages.PACKING_LIST)) {
+        packingListImages.value = groupedImages.PACKING_LIST.map(img => ({
+          id: img.id,
+          imageUrl: img.imageUrl,
+          thumbnailUrl: img.thumbnailUrl,
+          uploaded: true
+        }))
+        console.log('装箱单图片已加载:', packingListImages.value)
+      } else {
+        console.log('没有找到PACKING_LIST图片')
+      }
+    } else {
+      console.log('图片API返回code不正确或无数据, code:', result.code)
+    }
+  } catch (error) {
+    console.error('加载图片失败:', error)
+  }
+}
+
+// 步骤控制
+function nextStep() {
+  if (currentStep.value === 1) {
+    if (itemCount.value === 0) {
+      uni.showToast({
+        title: '暂无商品需要验收',
+        icon: 'none'
+      })
+      return
+    }
+    currentStep.value = 2
+    currentItemIndex.value = 0
+    loadItemForm()
+  } else {
+    if (currentItemIndex.value < itemCount.value - 1) {
+      saveCurrentItemForm()
+      currentItemIndex.value++
+      loadItemForm()
+    }
+  }
+}
+
+function previousStep() {
+  if (currentStep.value === 2 && currentItemIndex.value === 0) {
+    currentStep.value = 1
+  } else if (currentStep.value === 2) {
+    saveCurrentItemForm()
+    currentItemIndex.value--
+    loadItemForm()
+  }
+}
+
+// 加载当前商品表单
+async function loadItemForm() {
+  const item = currentItem.value
+  if (item) {
+    itemForm.value = {
+      qty: item.qty || null,
+      customerFeedback: item.customerFeedback || '',
+      isUnpacked: item.isUnpacked ?? 0,
+      iqcResult: item.iqcResult || ''
+    }
+    // 加载商品图片
+    await loadItemImages(item.itemId)
+  }
+}
+
+// 加载商品图片
+async function loadItemImages(itemId) {
+  try {
+    const result = await getGroupedImages('ITEM', itemId)
+    if (result.code === 1 && result.data) {
+      const groupedImages = result.data
+      
+      // 加载商品图片 (ITEM_IMAGE)
+      if (groupedImages.ITEM_IMAGE && Array.isArray(groupedImages.ITEM_IMAGE)) {
+        itemImages.value = groupedImages.ITEM_IMAGE.map(img => ({
+          id: img.id,
+          imageUrl: img.imageUrl,
+          thumbnailUrl: img.thumbnailUrl,
+          uploaded: true
+        }))
+      } else {
+        itemImages.value = []
+      }
+    }
+  } catch (error) {
+    console.error('加载商品图片失败:', error)
+    itemImages.value = []
+  }
+}
+
+// 保存当前商品表单到临时数据
+function saveCurrentItemForm() {
+  if (currentItem.value) {
+    Object.assign(currentItem.value, itemForm.value)
+  }
+}
+
+// Qty校验
+function validateQty() {
+  const qty = parseInt(itemForm.value.qty)
+  if (isNaN(qty) || qty < 0) {
+    uni.showToast({
+      title: '请输入有效的数量',
+      icon: 'none'
+    })
+    itemForm.value.qty = currentItem.value.qty || 0
+  } else {
+    itemForm.value.qty = qty
+  }
+}
+
+// 拆包状态改变
+function onUnpackedChange(e) {
+  itemForm.value.isUnpacked = parseInt(e.detail.value)
+}
+
+// 收货外观图片上传
+async function chooseReceiverImage() {
+  // 先检查数量限制
+  try {
+    await checkImageLimit('PARCEL', parcel.value.parcelId, 'PACKAGE_RECEIVER')
+  } catch (error) {
+    console.error('数量限制检查失败:', error)
+    uni.showToast({
+      title: error.message || '已达到图片数量限制',
+      icon: 'none',
+      duration: 3000
+    })
+    return
+  }
+  
+  uni.chooseImage({
+    count: 9 - receiverImages.value.length,
+    sizeType: ['compressed'],
+    sourceType: ['camera', 'album'],
+    success: async (res) => {
+      for (const filePath of res.tempFilePaths) {
+        // 添加临时图片显示
+        const tempImg = {
+          imageUrl: filePath,
+          thumbnailUrl: filePath,
+          uploaded: false,
+          uploading: true
+        }
+        receiverImages.value.push(tempImg)
+
+        try {
+          // 上传到服务器
+          const uploadResult = await uploadImage(
+            filePath,
+            'PARCEL',
+            parcel.value.parcelId,
+            'PACKAGE_RECEIVER'
+          )
+
+          // 更新为服务器URL
+          tempImg.id = uploadResult.id
+          tempImg.imageUrl = uploadResult.imageUrl
+          tempImg.thumbnailUrl = uploadResult.thumbnailUrl || uploadResult.imageUrl
+          tempImg.uploaded = true
+          tempImg.uploading = false
+        } catch (error) {
+          console.error('上传失败:', error)
+          // 移除失败的图片
+          const index = receiverImages.value.indexOf(tempImg)
+          if (index > -1) {
+            receiverImages.value.splice(index, 1)
+          }
+          uni.showToast({
+            title: '上传失败',
+            icon: 'none'
+          })
+        }
+      }
+    }
+  })
+}
+
+// 图片选择
+async function choosePackingImage() {
+  uni.chooseImage({
+    count: 9 - packingListImages.value.length,
+    sizeType: ['compressed'],
+    sourceType: ['camera', 'album'],
+    success: async (res) => {
+      for (const filePath of res.tempFilePaths) {
+        // 添加临时图片显示
+        const tempImg = {
+          url: filePath,
+          uploaded: false,
+          uploading: true
+        }
+        packingListImages.value.push(tempImg)
+
+        try {
+          // 上传到服务器
+          const uploadResult = await uploadImage(
+            filePath,
+            'PARCEL',
+            parcel.value.parcelId,
+            'PACKING_LIST'
+          )
+
+          // 更新为服务器URL
+          tempImg.id = uploadResult.id
+          tempImg.url = uploadResult.imageUrl || uploadResult.url
+          tempImg.uploaded = true
+          tempImg.uploading = false
+        } catch (error) {
+          console.error('上传失败:', error)
+          // 移除失败的图片
+          const index = packingListImages.value.indexOf(tempImg)
+          if (index > -1) {
+            packingListImages.value.splice(index, 1)
+          }
+          uni.showToast({
+            title: '上传失败',
+            icon: 'none'
+          })
+        }
+      }
+    }
+  })
+}
+
+async function chooseItemImage() {
+  const item = currentItem.value
+  if (!item) return
+  
+  // 先检查数量限制
+  try {
+    await checkImageLimit('ITEM', item.itemId, 'ITEM_IMAGE')
+  } catch (error) {
+    console.error('数量限制检查失败:', error)
+    uni.showToast({
+      title: error.message || '已达到图片数量限制',
+      icon: 'none',
+      duration: 3000
+    })
+    return
+  }
+  
+  uni.chooseImage({
+    count: 9 - itemImages.value.length,
+    sizeType: ['compressed'],
+    sourceType: ['camera', 'album'],
+    success: async (res) => {
+      for (const filePath of res.tempFilePaths) {
+        // 添加临时图片显示
+        const tempImg = {
+          imageUrl: filePath,
+          thumbnailUrl: filePath,
+          uploaded: false,
+          uploading: true
+        }
+        itemImages.value.push(tempImg)
+
+        try {
+          // 上传到服务器
+          const uploadResult = await uploadImage(
+            filePath,
+            'ITEM',
+            item.itemId,
+            'ITEM_IMAGE'
+          )
+
+          // 更新为服务器URL
+          tempImg.id = uploadResult.id
+          tempImg.imageUrl = uploadResult.imageUrl
+          tempImg.thumbnailUrl = uploadResult.thumbnailUrl || uploadResult.imageUrl
+          tempImg.uploaded = true
+          tempImg.uploading = false
+        } catch (error) {
+          console.error('上传失败:', error)
+          // 移除失败的图片
+          const index = itemImages.value.indexOf(tempImg)
+          if (index > -1) {
+            itemImages.value.splice(index, 1)
+          }
+          uni.showToast({
+            title: '上传失败',
+            icon: 'none'
+          })
+        }
+      }
+    }
+  })
+}
+
+async function removeReceiverImage(index) {
+  const img = receiverImages.value[index]
+  
+  // 如果是已上传的图片，调用删除API
+  if (img.id && img.uploaded) {
+    try {
+      await deleteImage(img.id)
+    } catch (error) {
+      console.error('删除图片失败:', error)
+      uni.showToast({
+        title: '删除失败',
+        icon: 'none'
+      })
+      return
+    }
+  }
+  
+  receiverImages.value.splice(index, 1)
+}
+
+async function removePackingImage(index) {
+  const img = packingListImages.value[index]
+  
+  // 如果是已上传的图片，调用删除API
+  if (img.id && img.uploaded) {
+    try {
+      await deleteImage(img.id)
+    } catch (error) {
+      console.error('删除图片失败:', error)
+      uni.showToast({
+        title: '删除失败',
+        icon: 'none'
+      })
+      return
+    }
+  }
+  
+  packingListImages.value.splice(index, 1)
+}
+
+async function removeItemImage(index) {
+  const img = itemImages.value[index]
+  
+  // 如果是已上传的图片，调用删除API
+  if (img.id && img.uploaded) {
+    try {
+      await deleteImage(img.id)
+    } catch (error) {
+      console.error('删除图片失败:', error)
+      uni.showToast({
+        title: '删除失败',
+        icon: 'none'
+      })
+      return
+    }
+  }
+  
+  itemImages.value.splice(index, 1)
+}
+
+// 预览原图
+function previewImageFull(imageUrl) {
+  if (!imageUrl) return
+  
+  const fullUrl = imageUrl.startsWith('http') 
+    ? imageUrl 
+    : 'http://localhost:8080' + imageUrl
+  
+  uni.previewImage({
+    urls: [fullUrl],
+    current: fullUrl
+  })
+}
+
+// 保存
+async function handleSave() {
+  try {
+    await uni.showModal({
+      title: '确认',
+      content: '确定要保存当前商品吗？'
+    })
+    
+    uni.showLoading({ title: '保存中...' })
+    
+    // 调用API保存当前item
+    await saveItemToServer()
+    
+    // 保存到本地缓存
+    saveCurrentItemForm()
+    
+    uni.hideLoading()
+    uni.showToast({
+      title: '保存成功',
+      icon: 'success'
+    })
+    
+    // 如果不是最后一个商品，进入下一个
+    if (currentItemIndex.value < itemCount.value - 1) {
+      setTimeout(() => {
+        currentItemIndex.value++
+        loadItemForm()
+      }, 500)
+    }
+  } catch (error) {
+    uni.hideLoading()
+    if (error !== 'cancel') {
+      console.error('保存失败:', error)
+      uni.showToast({
+        title: '保存失败',
+        icon: 'none'
+      })
+    }
+  }
+}
+
+// 保存商品到服务器
+async function saveItemToServer() {
+  const item = currentItem.value
+  if (!item) return
+  
+  const updateData = {
+    itemId: item.itemId,
+    qty: itemForm.value.qty,
+    customerFeedback: itemForm.value.customerFeedback,
+    isUnpacked: itemForm.value.isUnpacked,
+    iqcResult: itemForm.value.iqcResult,
+    itemStatus: 1,
+    ownerId: item.ownerId || parcel.value.ownerId,
+    keeperId: item.keeperId || userStore.user.userId,
+    receiveParcelId: parcel.value.parcelId,
+    receivePackageNo: parcel.value.packageNo,
+    receivedDate: new Date().toISOString().split('T')[0]
+  }
+  
+  await updateItem(updateData)
+  
+  // 更新本地数据
+  Object.assign(item, updateData)
+}
+
+// 提交
+async function handleSubmit() {
+  try {
+    await uni.showModal({
+      title: '确认',
+      content: '确定要提交验收吗？这将标记包裹为已收货。'
+    })
+    
+    uni.showLoading({ title: '提交中...' })
+    
+    // 先保存当前商品
+    await saveItemToServer()
+    saveCurrentItemForm()
+    
+    // 更新所有商品状态为已检查
+    const itemList = parcel.value.items || parcel.value.itemList || []
+    for (const item of itemList) {
+      if (item.itemStatus !== 1) {
+        const updateData = {
+          itemId: item.itemId,
+          itemStatus: 1,
+          ownerId: item.ownerId || parcel.value.ownerId,
+          keeperId: item.keeperId || userStore.user.userId,
+          receiveParcelId: parcel.value.parcelId,
+          receivePackageNo: parcel.value.packageNo,
+          receivedDate: new Date().toISOString().split('T')[0]
+        }
+        await updateItem(updateData)
+      }
+    }
+    
+    // 更新包裹状态为已收货 (status = 2)
+    await updateParcel({
+      parcelId: parcel.value.parcelId,
+      status: 2
+    })
+    
+    uni.hideLoading()
+    uni.showToast({
+      title: '验收成功',
+      icon: 'success'
+    })
+    
+    setTimeout(() => {
+      uni.navigateBack()
+    }, 1500)
+  } catch (error) {
+    uni.hideLoading()
+    if (error !== 'cancel') {
+      console.error('提交失败:', error)
+      uni.showToast({
+        title: '提交失败: ' + (error.message || '未知错误'),
+        icon: 'none'
+      })
+    }
+  }
+}
+
+function goBack() {
+  uni.navigateBack()
+}
+</script>
+
+<style lang="scss" scoped>
+.page-container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f8f8f8;
+}
+
+.step-indicator {
+  background: #fff;
+  padding: 30rpx;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #409EFF;
+  border-bottom: 1rpx solid #eee;
+}
+
+.step-content {
+  flex: 1;
+  padding: 20rpx;
+}
+
+.info-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+}
+
+.info-row {
+  display: flex;
+  margin-bottom: 20rpx;
+  font-size: 28rpx;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+  
+  .label {
+    width: 180rpx;
+    color: #999;
+  }
+  
+  .value {
+    flex: 1;
+    color: #333;
+    font-weight: 500;
+  }
+}
+
+.section {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+}
+
+.section-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 20rpx;
+}
+
+.photo-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+}
+
+.photo-item {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 12rpx;
+  position: relative;
+  overflow: hidden;
+  
+  image {
+    width: 100%;
+    height: 100%;
+  }
+  
+  .delete-btn {
+    position: absolute;
+    top: -8rpx;
+    right: -8rpx;
+    width: 38rpx;
+    height: 38rpx;
+    background: #ff4d4f;
+    color: #fff;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 38rpx;
+    font-size: 24rpx;
+    z-index: 10;
+  }
+}
+
+.add-photo {
+  width: 200rpx;
+  height: 200rpx;
+  border: 2rpx dashed #ddd;
+  border-radius: 12rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  
+  .add-icon {
+    font-size: 60rpx;
+    line-height: 1;
+  }
+  
+  .add-text {
+    font-size: 24rpx;
+    margin-top: 10rpx;
+  }
+}
+
+.no-image {
+  width: 100%;
+  padding: 40rpx;
+  text-align: center;
+  color: #999;
+  font-size: 28rpx;
+}
+
+.form-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+}
+
+.form-item {
+  margin-bottom: 30rpx;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.form-label {
+  display: block;
+  font-size: 28rpx;
+  color: #666;
+  margin-bottom: 15rpx;
+}
+
+.form-value {
+  display: block;
+  font-size: 30rpx;
+  color: #333;
+  font-weight: 500;
+}
+
+.form-input {
+  width: 100%;
+  height: 70rpx;
+  border: 1rpx solid #ddd;
+  border-radius: 8rpx;
+  padding: 0 20rpx;
+  font-size: 28rpx;
+  
+  &.readonly {
+    background: #f5f5f5;
+    color: #999;
+  }
+}
+
+.form-textarea {
+  width: 100%;
+  min-height: 150rpx;
+  border: 1rpx solid #ddd;
+  border-radius: 8rpx;
+  padding: 20rpx;
+  font-size: 28rpx;
+  line-height: 1.5;
+}
+
+.radio-group {
+  display: flex;
+  gap: 40rpx;
+}
+
+.radio-item {
+  display: flex;
+  align-items: center;
+  font-size: 28rpx;
+  
+  radio {
+    margin-right: 10rpx;
+  }
+}
+
+.action-btns {
+  display: flex;
+  gap: 20rpx;
+  padding: 30rpx 20rpx;
+  background: #fff;
+  
+  .btn {
+    flex: 1;
+    height: 80rpx;
+    line-height: 80rpx;
+    font-size: 30rpx;
+    border-radius: 12rpx;
+    border: none;
+    
+    &::after {
+      border: none;
+    }
+    
+    &.btn-cancel, &.btn-default {
+      background: #fff;
+      border: 1rpx solid #ddd;
+      color: #666;
+    }
+    
+    &.btn-primary {
+      background: #409EFF;
+      color: #fff;
+    }
+    
+    &.btn-success {
+      background: #67C23A;
+      color: #fff;
+    }
+    
+    &.btn-warning {
+      background: #E6A23C;
+      color: #fff;
+    }
+  }
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 200rpx 0;
+  
+  .empty-icon {
+    font-size: 120rpx;
+    margin-bottom: 40rpx;
+  }
+  
+  .empty-text {
+    font-size: 28rpx;
+    color: #999;
+  }
+}
+</style>
