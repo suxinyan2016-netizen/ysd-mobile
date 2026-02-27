@@ -98,10 +98,7 @@
       </view>
     </scroll-view>
     
-    <!-- 退出登录按钮 -->
-    <view class="logout-btn" @click="handleLogout">
-      <text>退出登录</text>
-    </view>
+    <!-- 底部退出登录按钮已移除 -->
   </view>
 </template>
 
