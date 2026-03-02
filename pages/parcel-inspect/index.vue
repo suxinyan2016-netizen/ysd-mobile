@@ -6,6 +6,7 @@
       <text v-else>商品 {{ currentItemIndex + 1 }} / {{ itemCount }}</text>
     </view>
     
+    
     <!-- Step 1: 包裹信息 -->
     <scroll-view v-if="currentStep === 1" class="step-content" scroll-y>
       <!-- 包裹基本信息 -->
@@ -79,39 +80,78 @@
     <scroll-view v-else-if="currentItem" class="step-content" scroll-y>
       <!-- 商品信息表单 -->
       <view class="form-card">
-        <view class="form-item">
-          <text class="form-label">商品编号 (Item No)</text>
-          <text class="form-value">{{ currentItem.itemNo || '-' }}</text>
+        <view class="form-row">
+          <view class="form-item col">
+            <text class="form-label">商品编号 (Item No)</text>
+            <text class="form-value">{{ currentItem.itemNo || '-' }}</text>
+          </view>
+          <view class="form-item col">
+            <text class="form-label">数量 (Qty) *</text>
+            <input 
+              class="form-input" 
+              type="digit" 
+              v-model="itemForm.qty"
+              placeholder="请输入数量"
+              @blur="validateQty"
+            />
+          </view>
         </view>
-        
-        <view class="form-item">
-          <text class="form-label">数量 (Qty) *</text>
-          <input 
-            class="form-input" 
-            type="digit" 
-            v-model="itemForm.qty"
-            placeholder="请输入数量"
-            @blur="validateQty"
-          />
+
+        <view class="form-row">
+          <view class="form-item col">
+            <text class="form-label">类别 (Category)</text>
+            <picker mode="selector" :range="categoryNames" @change="onCategoryChange" :value="selectedCategoryIndex">
+              <view class="form-input" style="display:flex;align-items:center;justify-content:space-between;">
+                <text>{{ (categoryNames[selectedCategoryIndex]) || '请选择类别' }}</text>
+                <text>▾</text>
+              </view>
+            </picker>
+          </view>
+          <view class="form-item col">
+            <text class="form-label">商品名 (Sellerpart)</text>
+            <input 
+              class="form-input" 
+              type="text"
+              v-model="itemForm.sellerPart"
+              placeholder="请输入商品名"
+              maxlength="200"
+            />
+          </view>
         </view>
-        
+
         <view class="form-item">
           <text class="form-label">客户反馈 (Customer Feedback)</text>
           <text class="form-value">{{ currentItem.customerFeedback || '-' }}</text>
         </view>
-        
-        <view class="form-item">
-          <text class="form-label">拆包状态 (Unpacked Status)</text>
-          <radio-group class="radio-group" @change="onUnpackedChange">
-            <label class="radio-item">
-              <radio value="0" :checked="itemForm.isUnpacked === 0" />
-              <text>Unpacked</text>
-            </label>
-            <label class="radio-item">
-              <radio value="1" :checked="itemForm.isUnpacked === 1" />
-              <text>Packed</text>
-            </label>
-          </radio-group>
+
+        <view class="form-row">
+          <view class="form-item col">
+            <text class="form-label">是否拆封 (isPacked)</text>
+            <radio-group class="radio-group" @change="onUnpackedChange">
+              <label class="radio-item">
+                <radio value="0" :checked="itemForm.isUnpacked === 0" />
+                <text>未拆</text>
+              </label>
+              <label class="radio-item">
+                <radio value="1" :checked="itemForm.isUnpacked === 1" />
+                <text>已拆</text>
+              </label>
+            </radio-group>
+          </view>
+
+          <view class="form-item col">
+            <text class="form-label">是否良品 (isGood)</text>
+            <radio-group class="radio-group" @change="onIsGoodChange">
+              <label class="radio-item">
+                <radio value="0" :checked="itemForm.isGood === 0" />
+                <text>坏件</text>
+              </label>
+              <label class="radio-item">
+                <radio value="1" :checked="itemForm.isGood === 1" />
+                <text>良品</text>
+              </label>
+            </radio-group>
+          </view>
         </view>
         
         <view class="form-item">
@@ -176,6 +216,8 @@
       <text class="empty-icon">📦</text>
       <text class="empty-text">暂无商品需要验收</text>
     </view>
+
+    
   </view>
 </template>
 
@@ -191,6 +233,38 @@ const parcel = ref({})
 const currentStep = ref(1)
 const currentItemIndex = ref(0)
 const isSaving = ref(false)
+const debugMessage = ref('')
+// persistentDebug kept for possible future use but no UI debug shown
+const persistentDebug = ref('')
+// detailed inline debug removed
+
+// 显示临时调试信息（右上角，默认会在 duration ms 后消失）
+function showDebugMessage(msg, duration = 3000) {
+  try {
+    debugMessage.value = typeof msg === 'string' ? msg : JSON.stringify(msg)
+  } catch (e) {
+    debugMessage.value = String(msg)
+  }
+  if (duration && duration > 0) {
+    setTimeout(() => { debugMessage.value = '' }, duration)
+  }
+}
+
+// 复制 persistentDebug 到剪贴板（便于用户粘贴到这里）
+function copyDebugToClipboard() {
+  const text = debugMessage.value || ''
+  if (!text) {
+    try { uni.showToast({ title: '无调试信息可复制', icon: 'none' }) } catch (e) {}
+    return
+  }
+  try {
+    uni.setClipboardData({ data: text })
+    uni.showToast({ title: '已复制调试信息到剪贴板', icon: 'success' })
+  } catch (e) {
+    console.warn('复制剪贴板失败', e)
+    try { uni.showToast({ title: '复制失败', icon: 'none' }) } catch (err) {}
+  }
+}
 
 // 图片数据
 // 图片类型配置（与后端配置保持一致）
@@ -204,13 +278,97 @@ const receiverImages = ref([])
 const packingListImages = ref([])
 const itemImages = ref([])
 
+// 类别字典（下拉）
+const categories = ref([])
+const categoriesLoaded = ref(false)
+const selectedCategoryIndex = ref(-1)
+// 默认使用的字典 group 名；后端实际是页面上显示的 Label（例如 'Category'）
+const CATEGORY_GROUP = 'Category'
+
+// picker 需要 string 数组作为 range，维护一个 names 数组以供展示
+const categoryNames = computed(() => categories.value.map(d => d.dictName || ''))
+
 // 当前商品表单数据
 const itemForm = ref({
   qty: null,
   customerFeedback: '',
   isUnpacked: 0,
-  iqcResult: ''
+  // isGood: 0 = bad, 1 = good (default 1)
+  isGood: 1,
+  sellerPart: '',
+  iqcResult: '',
+  dictId: null
 })
+
+// 加载指定字典组
+async function loadCategories(group = CATEGORY_GROUP, fallbackGroup = null, force = false) {
+  if (categoriesLoaded.value && !force) return
+  try {
+    let res = null
+
+    // helper to try group via /dicts/group then fallback to /dicts
+    const tryGroup = async (g) => {
+      if (g == null) return null
+      try {
+        let r = null
+        try {
+          r = await ApiHelper.get(`/dicts/group/${encodeURIComponent(g)}`)
+        } catch (err) {
+          r = null
+        }
+        if (!r || (r && r.code !== 1) || (Array.isArray(r) ? r.length === 0 : (Array.isArray(r.data) && r.data.length === 0))) {
+          try {
+            r = await ApiHelper.get('/dicts', { group: g, dictGroup: g })
+          } catch (err2) {
+            r = null
+          }
+        }
+        return r
+      } catch (e) { return null }
+    }
+
+    // try primary group
+    res = await tryGroup(group)
+
+    // if empty and fallback provided, try fallback groups (accept array or single value)
+    if ((!res || (res && res.code !== 1) || (Array.isArray(res) ? res.length === 0 : (Array.isArray(res.data) && res.data.length === 0))) && fallbackGroup != null) {
+      if (Array.isArray(fallbackGroup)) {
+        for (const fg of fallbackGroup) {
+          res = await tryGroup(fg)
+          if (res && ((Array.isArray(res) && res.length > 0) || (res.code === 1 && Array.isArray(res.data) && res.data.length > 0))) break
+        }
+      } else {
+        res = await tryGroup(fallbackGroup)
+      }
+    }
+
+    // finally, support array or {code:1,data:[]}
+    let items = []
+    if (Array.isArray(res)) items = res
+    else if (res && res.code === 1 && Array.isArray(res.data)) items = res.data
+
+    const normalize = (arr) => (arr || []).map(d => ({
+      dictId: d?.dictId ?? d?.id ?? d?.value ?? null,
+      dictName: d?.dictName ?? d?.name ?? d?.label ?? d?.dict_name ?? '' ,
+      isValid: d?.isValid ?? d?.valid ?? d?.enabled ?? undefined
+    }))
+
+    const normalized = normalize(items)
+    categories.value = normalized.filter(d => d && (d.isValid === undefined || d.isValid === 1))
+  } catch (e) {
+    console.warn('加载字典失败', e)
+    categories.value = []
+  }
+  categoriesLoaded.value = true
+}
+
+function onCategoryChange(e) {
+  const idx = parseInt(e.detail.value)
+  if (!isNaN(idx) && categories.value[idx]) {
+    selectedCategoryIndex.value = idx
+    itemForm.value.dictId = categories.value[idx].dictId
+  }
+}
 
 // 计算属性
 const itemCount = computed(() => {
@@ -247,6 +405,9 @@ onLoad((options) => {
   if (!userStore.userInfo) {
     userStore.checkLoginStatus()
   }
+  // 打印 ApiHelper 调试信息（基于运行环境帮助排查 APK/模拟器网络问题）
+  try { ApiHelper.debugInfo() } catch (e) { console.warn('ApiHelper.debugInfo 调用失败', e) }
+
   // 支持接收图片数据
   if (options.receiverImages) {
     try {
@@ -263,7 +424,15 @@ onLoad((options) => {
   if (options.parcelId) {
     loadParcelDetail(options.parcelId)
   }
+  // 在启动时显示简短的调试信息，方便在 APK 上直接看到 baseUrl/host/platform
+    // do not show persistent debug info in production UI
 })
+
+function truncate(str, n = 120) {
+  if (!str) return ''
+  const s = typeof str === 'string' ? str : JSON.stringify(str)
+  return s.length > n ? s.slice(0, n) + '...' : s
+}
 
 // 获取当前用户ID
 function getCurrentUserId() {
@@ -289,10 +458,46 @@ function getCurrentUserId() {
 async function loadParcelDetail(parcelId) {
   try {
     const result = await ApiHelper.get(`/parcels/${parcelId}`)
+    console.log('loadParcelDetail API 返回:', { parcelId, result })
     if (result.code === 1 && result.data) {
       parcel.value = result.data
-      // 加载图片
-      await loadImages(parcelId)
+      console.log('parcel.value 已设置:', parcel.value)
+      // Normalize item identifiers: backend sometimes returns `id` instead of `itemId` (APK/base may differ).
+      // Ensure downstream code always can use `item.itemId`.
+      try {
+        const items = parcel.value.items || parcel.value.itemList || []
+        console.log('发现 items 数组长度:', Array.isArray(items) ? items.length : 'not-array', 'parcel.value.items keys:', Object.keys(parcel.value || {}))
+        if (Array.isArray(items)) {
+          items.forEach(it => {
+            if (!it) return
+            // If backend uses `id`, map it to `itemId` for consistency
+            if (!it.itemId && it.id) {
+              it.itemId = it.id
+            }
+            // Some responses may nest item id under other keys; add more fallbacks as needed
+            // Normalize common field name variants to avoid missing data in APK/native builds
+            if (it.qty === undefined || it.qty === null) {
+              it.qty = it.quantity ?? it.count ?? it.Qty ?? null
+            }
+            if (!it.customerFeedback) {
+              it.customerFeedback = it.feedback ?? it.customer_feedback ?? ''
+            }
+            if (!it.itemNo) {
+              it.itemNo = it.sku ?? it.code ?? it.productCode ?? it.itemNo
+            }
+            // 预先加载字典，确保 picker 可用。尝试常见的 fallback keys（与网页版一致）
+            try { loadCategories(CATEGORY_GROUP, ['Hardware', 2]).catch(() => {}) } catch (e) {}
+          })
+          // Ensure parcel.value.items points to the normalized array
+          if (!parcel.value.items) parcel.value.items = items
+        }
+        console.log('normalize items 完成，parcel.value.items 长度:', (parcel.value.items || []).length)
+        // no debug UI changes here
+      } catch (e) {
+        console.warn('normalize items failed', e)
+      }
+       // 加载图片
+       await loadImages(parcelId)
     } else {
       uni.showToast({
         title: result.msg || '加载失败',
@@ -318,45 +523,59 @@ async function loadImages(parcelId) {
     })
     console.log('图片API返回结果:', result)
     
-    if (result.code === 1 && result.data) {
+    // Always clear previous parcel-level images first to avoid showing stale images
+    receiverImages.value = []
+    packingListImages.value = []
+
+    if (result && result.code === 1 && result.data) {
       const groupedImages = result.data
       console.log('分组图片数据:', groupedImages)
       
       // 加载收货外观图片 (PACKAGE_RECEIVER)
       if (groupedImages.PACKAGE_RECEIVER && Array.isArray(groupedImages.PACKAGE_RECEIVER)) {
+        const host = ApiHelper.getHost()
         receiverImages.value = groupedImages.PACKAGE_RECEIVER.map(img => ({
           id: img.id,
-          imageUrl: img.imageUrl,
-          thumbnailUrl: img.thumbnailUrl,
+          imageUrl: img.imageUrl && img.imageUrl.startsWith('http') ? img.imageUrl : (host + (img.imageUrl || '')),
+          thumbnailUrl: img.thumbnailUrl && img.thumbnailUrl.startsWith('http') ? img.thumbnailUrl : (host + (img.thumbnailUrl || img.imageUrl || '')),
           uploaded: true
         }))
         console.log('收货外观图片已加载:', receiverImages.value)
       } else {
-        console.log('没有找到PACKAGE_RECEIVER图片')
+        console.log('没有找到PACKAGE_RECEIVER图片，保持为空')
       }
       
       // 加载装箱单图片 (PACKING_LIST)
       if (groupedImages.PACKING_LIST && Array.isArray(groupedImages.PACKING_LIST)) {
+        const host = ApiHelper.getHost()
         packingListImages.value = groupedImages.PACKING_LIST.map(img => ({
           id: img.id,
-          imageUrl: img.imageUrl,
-          thumbnailUrl: img.thumbnailUrl,
+          imageUrl: img.imageUrl && img.imageUrl.startsWith('http') ? img.imageUrl : (host + (img.imageUrl || '')),
+          thumbnailUrl: img.thumbnailUrl && img.thumbnailUrl.startsWith('http') ? img.thumbnailUrl : (host + (img.thumbnailUrl || img.imageUrl || '')),
           uploaded: true
         }))
         console.log('装箱单图片已加载:', packingListImages.value)
       } else {
-        console.log('没有找到PACKING_LIST图片')
+        console.log('没有找到PACKING_LIST图片，保持为空')
       }
+      // no persistent debug write
     } else {
-      console.log('图片API返回code不正确或无数据, code:', result.code)
+      // 非正常返回时，确保清空，避免显示上一次的数据
+      console.log('图片API返回code不正确或无数据，清空包裹级图片')
+      receiverImages.value = []
+      packingListImages.value = []
+      try { uni.showToast({ title: '加载包裹图片返回异常，请查看日志', icon: 'none', duration: 2000 }) } catch (e) {}
+      showDebugMessage('包裹图片加载异常')
     }
   } catch (error) {
     console.error('加载图片失败:', error)
+    try { uni.showToast({ title: '加载包裹图片失败: ' + (error?.message || ''), icon: 'none', duration: 2500 }) } catch (e) {}
+    showDebugMessage('包裹图片加载失败')
   }
 }
 
 // 步骤控制
-function nextStep() {
+async function nextStep() {
   if (currentStep.value === 1) {
     if (itemCount.value === 0) {
       uni.showToast({
@@ -367,25 +586,58 @@ function nextStep() {
     }
     currentStep.value = 2
     currentItemIndex.value = 0
-    loadItemForm()
+    await loadItemForm()
     // 不再重复加载包裹图片接口
+    // ensure unpacked status and category are freshly applied after navigation
+    itemForm.value.isUnpacked = currentItem.value?.isUnpacked ?? 0
+    itemForm.value.dictId = currentItem.value?.dictId ?? null
+    if (itemForm.value.dictId != null && Array.isArray(categories.value) && categories.value.length > 0) {
+      const idx = categories.value.findIndex(d => d.dictId == itemForm.value.dictId)
+      selectedCategoryIndex.value = idx >= 0 ? idx : -1
+    } else {
+      selectedCategoryIndex.value = -1
+    }
   } else {
     if (currentItemIndex.value < itemCount.value - 1) {
       saveCurrentItemForm()
       currentItemIndex.value++
-      loadItemForm()
+      await loadItemForm()
+      // reload unpacked and category after navigation between items
+      itemForm.value.isUnpacked = currentItem.value?.isUnpacked ?? 0
+      itemForm.value.dictId = currentItem.value?.dictId ?? null
+      if (itemForm.value.dictId != null && Array.isArray(categories.value) && categories.value.length > 0) {
+        const idx = categories.value.findIndex(d => d.dictId == itemForm.value.dictId)
+        selectedCategoryIndex.value = idx >= 0 ? idx : -1
+      } else {
+        selectedCategoryIndex.value = -1
+      }
       // 只加载商品图片
     }
   }
+  try {
+    // 写入持久化调试信息（在 loadItemForm 完成后），便于 APK 上确认代码已执行
+    const itemsSummary = Array.isArray(parcel.value.items) ? parcel.value.items.map(i => i.itemId || i.id || i.itemNo || '?') : (Array.isArray(parcel.value.itemList) ? parcel.value.itemList.map(i => i.itemId || i.id || i.itemNo || '?') : [])
+    showDebugMessage(`下一步: step ${currentStep.value} idx ${currentItemIndex.value}`, 1500)
+    console.log('nextStep executed:', { step: currentStep.value, idx: currentItemIndex.value })
+  } catch (e) { console.warn('set persistentDebug failed', e) }
 }
 
-function previousStep() {
+async function previousStep() {
   if (currentStep.value === 2 && currentItemIndex.value === 0) {
     currentStep.value = 1
   } else if (currentStep.value === 2) {
     saveCurrentItemForm()
     currentItemIndex.value--
-    loadItemForm()
+    await loadItemForm()
+    // reload unpacked and category after navigating back
+    itemForm.value.isUnpacked = currentItem.value?.isUnpacked ?? 0
+    itemForm.value.dictId = currentItem.value?.dictId ?? null
+    if (itemForm.value.dictId != null && Array.isArray(categories.value) && categories.value.length > 0) {
+      const idx = categories.value.findIndex(d => d.dictId == itemForm.value.dictId)
+      selectedCategoryIndex.value = idx >= 0 ? idx : -1
+    } else {
+      selectedCategoryIndex.value = -1
+    }
   }
 }
 
@@ -398,47 +650,114 @@ async function loadItemForm() {
   }
   
   console.log('loadItemForm 被调用, currentItemIndex:', currentItemIndex.value)
-  console.trace('loadItemForm 调用堆栈')
-  
+  try {
+    if (console && typeof console.trace === 'function') console.trace('loadItemForm 调用堆栈')
+  } catch (e) {}
+  console.log('loadItemForm 时 parcel:', parcel.value)
+  console.log('计算的 itemCount:', itemCount.value, 'computed items length (parcel.items):', (parcel.value.items || []).length, 'parcel.itemList length:', (parcel.value.itemList || []).length)
+
   const item = currentItem.value
-  if (item) {
+  // 在 APK 上持久化一些调试信息，便于观察 itemId/索引在原生环境的值
+    try {
+      // normalize fields so UI shows correct values
+      const normQty = item?.qty ?? item?.quantity ?? item?.count ?? item?.Qty ?? null
+      const normFeedback = item?.customerFeedback || item?.feedback || item?.customer_feedback || ''
+      if (normQty !== undefined) item.qty = normQty
+      if (normFeedback !== undefined) item.customerFeedback = normFeedback
+    } catch (e) {}
+  console.log('当前 currentItem 值:', item)
+    if (item) {
+    // Reset itemImages first to avoid showing previous item's images
+    itemImages.value = []
+
+    // Initialize form from current item. Use empty string as default for iqcResult
+    // ensure categories loaded before initializing selected index
+    await loadCategories(CATEGORY_GROUP, ['Hardware', 2], true)
+    // normalize sellerPart variants
+    const normSellerPart = item?.sellerPart || item?.Sellerpart || item?.sellerpart || item?.name || ''
+    if (normSellerPart !== undefined) item.sellerPart = normSellerPart
+
+    // normalize isGood variants (default 1)
+    const normIsGood = (item?.isGood !== undefined && item?.isGood !== null) ? item.isGood : (item?.is_good ?? 1)
+    if (normIsGood !== undefined && normIsGood !== null) item.isGood = normIsGood
+
     itemForm.value = {
-      qty: item.qty || null,
+      qty: item.qty ?? null,
+      sellerPart: item.sellerPart || '',
       customerFeedback: item.customerFeedback || '',
       isUnpacked: item.isUnpacked ?? 0,
-      iqcResult: item.iqcResult || 'No Defects'
+      isGood: item.isGood ?? 1,
+      iqcResult: item.iqcResult ?? '',
+      dictId: item.dictId ?? null
+    }
+    // set selectedCategoryIndex based on item.dictId
+    if (itemForm.value.dictId != null && Array.isArray(categories.value) && categories.value.length > 0) {
+      const idx = categories.value.findIndex(d => (d.dictId == itemForm.value.dictId) || (d.dictName === item.customerFeedback) )
+      selectedCategoryIndex.value = idx >= 0 ? idx : -1
     }
     console.log('loadItemForm 后 itemForm.iqcResult:', itemForm.value.iqcResult)
-    // 加载商品图片
-    await loadItemImages(item.itemId)
+
+    // 加载商品图片（此调用会再次设置 itemImages）
+    // Some environments/backend responses use `id` instead of `itemId`.
+    // Prefer item.itemId but fallback to item.id, and normalize back to item.itemId for later use.
+    const resolvedItemId = item.itemId || item.id || null
+    if (resolvedItemId && !item.itemId) item.itemId = resolvedItemId
+    await loadItemImages(resolvedItemId)
   }
 }
 
 // 加载商品图片
 async function loadItemImages(itemId) {
   try {
+    // Clear previous images immediately to avoid showing stale images while loading
+    itemImages.value = []
+
     const result = await ApiHelper.get('/image/manage/grouped', {
       moduleType: 'ITEM',
       recordId: itemId
     })
-    if (result.code === 1 && result.data) {
+
+    console.log('loadItemImages 调用返回:', { itemId, currentItemIndex: currentItemIndex.value, result })
+
+    if (result && result.code === 1 && result.data) {
       const groupedImages = result.data
-      
+
       // 加载商品图片 (ITEM_IMAGE)
       if (groupedImages.ITEM_IMAGE && Array.isArray(groupedImages.ITEM_IMAGE)) {
-        itemImages.value = groupedImages.ITEM_IMAGE.map(img => ({
-          id: img.id,
-          imageUrl: img.imageUrl,
-          thumbnailUrl: img.thumbnailUrl,
-          uploaded: true
-        }))
+        const host = ApiHelper.getHost()
+        itemImages.value = groupedImages.ITEM_IMAGE.map(img => {
+          const imageUrl = img.imageUrl && img.imageUrl.startsWith('http') ? img.imageUrl : (host + (img.imageUrl || ''))
+          const thumbnailUrl = img.thumbnailUrl && img.thumbnailUrl.startsWith('http') ? img.thumbnailUrl : (host + (img.thumbnailUrl || img.imageUrl || ''))
+          return {
+            id: img.id,
+            imageUrl,
+            thumbnailUrl,
+            uploaded: true
+          }
+        })
+        console.log('加载到 item 图片:', itemImages.value)
+        try {
+          // no debug UI writes; itemImages already set
+        } catch (e) {}
       } else {
+        // 没有该 item 的图片，确保为空
         itemImages.value = []
+        try { /* no debug UI writes */ } catch (e) {}
       }
+    } else {
+      // 非正常返回，确保清空
+      itemImages.value = []
+      try { /* no debug UI writes */ } catch (e) {}
+      try { uni.showToast({ title: '加载商品图片返回异常', icon: 'none', duration: 2000 }) } catch (e) {}
+      const short = `itemId:${itemId} code:${result?.code} hasData:${!!result?.data}`
+      showDebugMessage(truncate(short), 4000)
+      try { /* no debug UI writes */ } catch (e) {}
     }
   } catch (error) {
     console.error('加载商品图片失败:', error)
     itemImages.value = []
+    try { uni.showToast({ title: '加载商品图片失败: ' + (error?.message || ''), icon: 'none', duration: 2500 }) } catch (e) {}
+    showDebugMessage(truncate('itemImages error: ' + (error?.message || '')), 4000)
   }
 }
 
@@ -463,6 +782,10 @@ function validateQty() {
 // 拆包状态改变
 function onUnpackedChange(e) {
   itemForm.value.isUnpacked = parseInt(e.detail.value)
+}
+
+function onIsGoodChange(e) {
+  itemForm.value.isGood = parseInt(e.detail.value)
 }
 
 // IQC结果输入处理
@@ -552,7 +875,7 @@ async function chooseReceiverImage() {
     await loadImages(parcel.value.parcelId)
     return
   }
-  
+
   uni.chooseImage({
     count: imageTypeConfig.PACKAGE_RECEIVER.max_count - receiverImages.value.length,
     sizeType: ['compressed'],
@@ -567,7 +890,7 @@ async function chooseReceiverImage() {
           uploading: true
         }
         receiverImages.value.push(tempImg)
-        
+
         try {
           // 上传到服务器
           const uploadResult = await uploadImage(
@@ -576,11 +899,12 @@ async function chooseReceiverImage() {
             parcel.value.parcelId,
             'PACKAGE_RECEIVER'
           )
-          
-          // 更新为服务器URL
+
+          // 更新为服务器URL（确保为绝对 URL）
           tempImg.id = uploadResult.id
-          tempImg.imageUrl = uploadResult.imageUrl
-          tempImg.thumbnailUrl = uploadResult.thumbnailUrl || uploadResult.imageUrl
+          const host = ApiHelper.getHost()
+          tempImg.imageUrl = uploadResult.imageUrl && uploadResult.imageUrl.startsWith('http') ? uploadResult.imageUrl : (host + (uploadResult.imageUrl || ''))
+          tempImg.thumbnailUrl = uploadResult.thumbnailUrl && uploadResult.thumbnailUrl.startsWith('http') ? uploadResult.thumbnailUrl : (host + (uploadResult.thumbnailUrl || uploadResult.imageUrl || ''))
           tempImg.uploaded = true
           tempImg.uploading = false
         } catch (error) {
@@ -624,7 +948,7 @@ async function choosePackingImage() {
     await loadImages(parcel.value.parcelId)
     return
   }
-  
+
   uni.chooseImage({
     count: imageTypeConfig.PACKING_LIST.max_count - packingListImages.value.length,
     sizeType: ['compressed'],
@@ -639,7 +963,7 @@ async function choosePackingImage() {
           uploading: true
         }
         packingListImages.value.push(tempImg)
-        
+
         try {
           // 上传到服务器
           const uploadResult = await uploadImage(
@@ -648,13 +972,14 @@ async function choosePackingImage() {
             parcel.value.parcelId,
             'PACKING_LIST'
           )
-          
-          // 更新为服务器URL
+
+          // 更新为服务器URL（确保为绝对 URL）
           tempImg.id = uploadResult.id
-          tempImg.imageUrl = uploadResult.imageUrl
-          tempImg.thumbnailUrl = uploadResult.thumbnailUrl || uploadResult.imageUrl
-          tempImg.uploaded = true
-          tempImg.uploading = false
+          const host = ApiHelper.getHost()
+          tempImg.imageUrl = uploadResult.imageUrl && uploadResult.imageUrl.startsWith('http') ? uploadResult.imageUrl : (host + (uploadResult.imageUrl || ''))
+          tempImg.thumbnailUrl = uploadResult.thumbnailUrl && uploadResult.thumbnailUrl.startsWith('http') ? uploadResult.thumbnailUrl : (host + (uploadResult.thumbnailUrl || uploadResult.imageUrl || ''))
+           tempImg.uploaded = true
+           tempImg.uploading = false
         } catch (error) {
           console.error('上传失败:', error)
           // 移除失败的图片
@@ -697,7 +1022,7 @@ async function chooseItemImage() {
     await loadItemImages(item.itemId)
     return
   }
-  
+
   uni.chooseImage({
     count: imageTypeConfig.ITEM_IMAGE.max_count - itemImages.value.length,
     sizeType: ['compressed'],
@@ -712,7 +1037,7 @@ async function chooseItemImage() {
           uploading: true
         }
         itemImages.value.push(tempImg)
-        
+
         try {
           // 上传到服务器
           const uploadResult = await uploadImage(
@@ -721,13 +1046,14 @@ async function chooseItemImage() {
             item.itemId,
             'ITEM_IMAGE'
           )
-          
-          // 更新为服务器URL
+
+          // 更新为服务器URL（确保为绝对 URL）
           tempImg.id = uploadResult.id
-          tempImg.imageUrl = uploadResult.imageUrl
-          tempImg.thumbnailUrl = uploadResult.thumbnailUrl || uploadResult.imageUrl
-          tempImg.uploaded = true
-          tempImg.uploading = false
+          const host = ApiHelper.getHost()
+          tempImg.imageUrl = uploadResult.imageUrl && uploadResult.imageUrl.startsWith('http') ? uploadResult.imageUrl : (host + (uploadResult.imageUrl || ''))
+          tempImg.thumbnailUrl = uploadResult.thumbnailUrl && uploadResult.thumbnailUrl.startsWith('http') ? uploadResult.thumbnailUrl : (host + (uploadResult.thumbnailUrl || uploadResult.imageUrl || ''))
+           tempImg.uploaded = true
+           tempImg.uploading = false
         } catch (error) {
           console.error('上传失败:', error)
           // 移除失败的图片
@@ -747,7 +1073,7 @@ async function chooseItemImage() {
 
 async function removeReceiverImage(index) {
   const img = receiverImages.value[index]
-  
+
   try {
     // 如果是已上传的图片，先调用删除API
     if (img.id && img.uploaded) {
@@ -756,10 +1082,10 @@ async function removeReceiverImage(index) {
       // 删除成功后，等待后端数据库完全更新（避免立即上传时后端检查到旧数据）
       await new Promise(resolve => setTimeout(resolve, 800))
     }
-    
+
     // API删除成功后，再从本地数组中移除
     receiverImages.value.splice(index, 1)
-    
+
     uni.showToast({
       title: '删除成功',
       icon: 'success'
@@ -777,7 +1103,7 @@ async function removeReceiverImage(index) {
 
 async function removePackingImage(index) {
   const img = packingListImages.value[index]
-  
+
   try {
     // 如果是已上传的图片，先调用删除API
     if (img.id && img.uploaded) {
@@ -786,10 +1112,10 @@ async function removePackingImage(index) {
       // 删除成功后，等待后端数据库完全更新
       await new Promise(resolve => setTimeout(resolve, 800))
     }
-    
+
     // API删除成功后，再从本地数组中移除
     packingListImages.value.splice(index, 1)
-    
+
     uni.showToast({
       title: '删除成功',
       icon: 'success'
@@ -807,7 +1133,7 @@ async function removePackingImage(index) {
 
 async function removeItemImage(index) {
   const img = itemImages.value[index]
-  
+
   try {
     // 如果是已上传的图片，先调用删除API
     if (img.id && img.uploaded) {
@@ -816,10 +1142,10 @@ async function removeItemImage(index) {
       // 删除成功后，等待后端数据库完全更新
       await new Promise(resolve => setTimeout(resolve, 800))
     }
-    
+
     // API删除成功后，再从本地数组中移除
     itemImages.value.splice(index, 1)
-    
+
     uni.showToast({
       title: '删除成功',
       icon: 'success'
@@ -838,14 +1164,29 @@ async function removeItemImage(index) {
 // 预览原图
 function previewImageFull(imageUrl) {
   if (!imageUrl) return
-  
-  const fullUrl = imageUrl.startsWith('http') 
-    ? imageUrl 
-    : 'http://localhost:8080' + imageUrl
-  
+  const host = ApiHelper.getHost()
+  const fullUrl = imageUrl.startsWith('http') ? imageUrl : (host + imageUrl)
+
   uni.previewImage({
     urls: [fullUrl],
     current: fullUrl
+  })
+}
+
+// 检查图片 URL 在当前运行环境是否可访问（使用 uni.getImageInfo）
+function checkImageAccessible(url) {
+  return new Promise((resolve) => {
+    if (!url) return resolve(false)
+    try {
+      uni.getImageInfo({
+        src: url,
+        success() { resolve(true) },
+        fail(err) { console.warn('getImageInfo fail for', url, err); resolve(false) }
+      })
+    } catch (e) {
+      console.warn('checkImageAccessible exception', e)
+      resolve(false)
+    }
   })
 }
 
@@ -853,11 +1194,11 @@ function previewImageFull(imageUrl) {
 function handleSaveClick() {
   console.log('=== handleSaveClick 开始 ===')
   console.log('点击时 itemForm.iqcResult:', itemForm.value.iqcResult)
-  
+
   // 立即保存表单数据到 currentItem
   saveCurrentItemForm()
   console.log('保存后 currentItem.iqcResult:', currentItem.value.iqcResult)
-  
+
   // 调用实际的保存函数
   handleSave()
 }
@@ -867,31 +1208,23 @@ async function handleSave() {
   try {
     // 设置保存标志，防止保存过程中表单被重新加载
     isSaving.value = true
-    
-    // 在弹出确认对话框之前，先保存表单数据到 currentItem，避免对话框期间的操作覆盖表单
+
+    // 直接保存表单数据到 currentItem，并执行保存（不再弹出确认对话）
     saveCurrentItemForm()
     console.log('保存前 itemForm.iqcResult:', itemForm.value.iqcResult)
     console.log('保存前 currentItem.iqcResult:', currentItem.value.iqcResult)
-    
-    await uni.showModal({
-      title: '确认',
-      content: '确定要保存当前商品吗？'
-    })
-    
+
     uni.showLoading({ title: '保存中...' })
-    
-    console.log('确认后 itemForm.iqcResult:', itemForm.value.iqcResult)
-    console.log('确认后 currentItem.iqcResult:', currentItem.value.iqcResult)
-    
+
     // 调用API保存当前item
     await saveItemToServer()
-    
+
     uni.hideLoading()
     uni.showToast({
       title: '保存成功',
       icon: 'success'
     })
-    
+
     // 如果是最后一个商品，保存成功后返回列表页面
     if (currentItemIndex.value === itemCount.value - 1) {
       setTimeout(() => {
@@ -905,13 +1238,11 @@ async function handleSave() {
   } catch (error) {
     isSaving.value = false
     uni.hideLoading()
-    if (error !== 'cancel') {
-      console.error('保存失败:', error)
-      uni.showToast({
-        title: '保存失败',
-        icon: 'none'
-      })
-    }
+    console.error('保存失败:', error)
+    uni.showToast({
+      title: '保存失败',
+      icon: 'none'
+    })
   }
 }
 
@@ -919,22 +1250,27 @@ async function handleSave() {
 async function saveItemToServer() {
   const item = currentItem.value
   if (!item) return
-  
+
   console.log('itemForm 完整对象:', JSON.stringify(itemForm.value))
   console.log('itemForm.iqcResult 原始值:', itemForm.value.iqcResult)
   console.log('item 对象:', JSON.stringify(item))
-  
+
   const currentUserId = getCurrentUserId()
-  
+
   if (!currentUserId) {
     throw new Error('无法获取用户信息，请重新登录')
   }
-  
+
   const updateData = {
     itemId: item.itemId,
     qty: itemForm.value.qty,
     customerFeedback: itemForm.value.customerFeedback,
+    // include sellerPart (商品名)
+    sellerPart: itemForm.value.sellerPart || item.sellerPart || '',
+    // include dictId from the category picker
+    dictId: itemForm.value.dictId || item.dictId || null,
     isUnpacked: itemForm.value.isUnpacked,
+    isGood: itemForm.value.isGood,
     iqcResult: itemForm.value.iqcResult || '',
     itemStatus: 1,
     ownerId: item.ownerId || parcel.value.ownerId || currentUserId,
@@ -943,7 +1279,7 @@ async function saveItemToServer() {
     receivePackageNo: parcel.value.packageNo,
     receivedDate: new Date().toISOString().split('T')[0]
   }
-  
+
   console.log('保存商品数据:', updateData)
   console.log('updateData.iqcResult:', updateData.iqcResult)
 
@@ -1003,28 +1339,28 @@ async function handleSubmit() {
       title: '确认',
       content: '确定要提交验收吗？这将标记包裹为已收货。'
     })
-    
+
     uni.showLoading({ title: '提交中...' })
-    
+
     // 步骤1: 保存当前 Item 数据
     console.log('步骤1: 保存当前 Item 数据')
     saveCurrentItemForm()
     await saveItemData()
-    
+
     // 步骤2: 更新所有 Items 的状态
     console.log('步骤2: 更新所有 Items 的状态')
     await updateAllItems()
-    
+
     // 步骤3: 更新 Parcel 状态为已收货
     console.log('步骤3: 更新 Parcel 状态为已收货')
     await updateParcelStatus()
-    
+
     uni.hideLoading()
     uni.showToast({
       title: '验收成功',
       icon: 'success'
     })
-    
+
     // 步骤4: 返回列表页面（列表页面的 onShow 会自动刷新）
     setTimeout(() => {
       uni.navigateBack({
@@ -1050,20 +1386,26 @@ async function saveItemData() {
   if (!item) {
     throw new Error('当前商品不存在')
   }
-  
+
   const currentDate = new Date().toISOString().split('T')[0]
   const currentUserId = getCurrentUserId()
-  
+
   if (!currentUserId) {
     console.error('用户信息:', userStore.userInfo)
     console.error('Storage 用户信息:', uni.getStorageSync('loginUser'))
     throw new Error('无法获取用户信息，请重新登录')
   }
-  
+
   const updateData = {
     itemId: item.itemId,
     // 更新 item 的基本信息
     qty: itemForm.value.qty,
+    // dictId from category picker
+    dictId: itemForm.value.dictId || item.dictId || null,
+    // include sellerPart (商品名)
+    sellerPart: itemForm.value.sellerPart || item.sellerPart || '',
+    // include isGood
+    isGood: itemForm.value.isGood,
     customerFeedback: itemForm.value.customerFeedback || item.customerFeedback,
     isUnpacked: itemForm.value.isUnpacked,
     iqcResult: itemForm.value.iqcResult || '',
@@ -1078,9 +1420,9 @@ async function saveItemData() {
     receivePackageNo: parcel.value.packageNo,
     receivedDate: currentDate
   }
-  
+
   console.log('保存当前商品数据:', updateData)
-  
+
     try {
       const result = await ApiHelper.put('/items', updateData)
       console.log('保存当前商品成功:', result)
@@ -1097,25 +1439,25 @@ async function updateAllItems() {
   const itemList = parcel.value.items || parcel.value.itemList || []
   const currentDate = new Date().toISOString().split('T')[0]
   const currentUserId = getCurrentUserId()
-  
+
   if (!currentUserId) {
     throw new Error('无法获取用户信息，请重新登录')
   }
-  
+
   console.log(`开始更新所有商品状态，共 ${itemList.length} 个商品`)
-  
+
   // 遍历所有 items，更新状态不是 1 的（未检查的）
   for (let i = 0; i < itemList.length; i++) {
     const item = itemList[i]
-    
+
     // 跳过已检查的商品（状态为1）
     if (item.itemStatus === 1) {
       console.log(`商品 ${i + 1} (${item.itemNo}) 已检查，跳过`)
       continue
     }
-    
+
     console.log(`更新商品 ${i + 1} (${item.itemNo}) 状态`)
-    
+
     const updateData = {
       itemId: item.itemId,
       // 标记为已检查
@@ -1129,7 +1471,7 @@ async function updateAllItems() {
       receivePackageNo: parcel.value.packageNo,
       receivedDate: currentDate
     }
-    
+
     try {
       const result = await ApiHelper.put('/items', updateData)
       console.log(`商品 ${i + 1} 更新成功:`, result)
@@ -1140,7 +1482,7 @@ async function updateAllItems() {
       throw new Error(`更新商品 ${item.itemNo || i + 1} 失败`)
     }
   }
-  
+
   console.log('所有商品状态更新完成')
 }
 
@@ -1152,9 +1494,9 @@ async function updateParcelStatus() {
     status: 2, // 2 = Received (已收货)
     receivedDate: currentDate
   }
-  
+
   console.log('更新包裹状态:', updateData)
-  
+
   try {
     const result = await ApiHelper.put('/parcels', updateData)
     console.log('更新包裹状态成功:', result)
@@ -1190,6 +1532,8 @@ function goBack() {
   border-bottom: 1rpx solid #eee;
 }
 
+/* debug styles removed */
+
 .step-content {
   flex: 1;
   padding: 20rpx;
@@ -1206,16 +1550,16 @@ function goBack() {
   display: flex;
   margin-bottom: 20rpx;
   font-size: 28rpx;
-  
+
   &:last-child {
     margin-bottom: 0;
   }
-  
+
   .label {
     width: 180rpx;
     color: #999;
   }
-  
+
   .value {
     flex: 1;
     color: #333;
@@ -1250,12 +1594,12 @@ function goBack() {
   border-radius: 12rpx;
   position: relative;
   overflow: hidden;
-  
+
   image {
     width: 100%;
     height: 100%;
   }
-  
+
   .delete-btn {
     position: absolute;
     top: -8rpx;
@@ -1282,12 +1626,12 @@ function goBack() {
   align-items: center;
   justify-content: center;
   color: #999;
-  
+
   .add-icon {
     font-size: 60rpx;
     line-height: 1;
   }
-  
+
   .add-text {
     font-size: 24rpx;
     margin-top: 10rpx;
@@ -1309,9 +1653,18 @@ function goBack() {
   margin-bottom: 20rpx;
 }
 
+.form-row {
+  display: flex;
+  gap: 20rpx;
+}
+
+.form-row .col {
+  flex: 1;
+}
+
 .form-item {
   margin-bottom: 30rpx;
-  
+
   &:last-child {
     margin-bottom: 0;
   }
@@ -1338,7 +1691,7 @@ function goBack() {
   border-radius: 8rpx;
   padding: 0 20rpx;
   font-size: 28rpx;
-  
+
   &.readonly {
     background: #f5f5f5;
     color: #999;
@@ -1364,7 +1717,7 @@ function goBack() {
   display: flex;
   align-items: center;
   font-size: 28rpx;
-  
+
   radio {
     margin-right: 10rpx;
   }
@@ -1375,7 +1728,7 @@ function goBack() {
   gap: 20rpx;
   padding: 30rpx 20rpx;
   background: #fff;
-  
+
   .btn {
     flex: 1;
     height: 80rpx;
@@ -1383,27 +1736,27 @@ function goBack() {
     font-size: 30rpx;
     border-radius: 12rpx;
     border: none;
-    
+
     &::after {
       border: none;
     }
-    
+
     &.btn-cancel, &.btn-default {
       background: #fff;
       border: 1rpx solid #ddd;
       color: #666;
     }
-    
+
     &.btn-primary {
       background: #409EFF;
       color: #fff;
     }
-    
+
     &.btn-success {
       background: #67C23A;
       color: #fff;
     }
-    
+
     &.btn-warning {
       background: #E6A23C;
       color: #fff;
@@ -1418,15 +1771,17 @@ function goBack() {
   align-items: center;
   justify-content: center;
   padding: 200rpx 0;
-  
+
   .empty-icon {
     font-size: 120rpx;
     margin-bottom: 40rpx;
   }
-  
+
   .empty-text {
     font-size: 28rpx;
     color: #999;
   }
 }
+
+/* Debug styles removed */
 </style>
