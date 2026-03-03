@@ -5,22 +5,41 @@ import { useUserStore } from '@/stores/user'
 
 // 设置全局错误处理
 const setupErrorHandling = () => {
-  window.addEventListener('unhandledrejection', (event) => {
-    console.error('未处理的 Promise 拒绝:', event.reason)
-    
-    // 如果是模块导入错误，记录但不阻止
-    if (event.reason?.message?.includes('Failed to fetch dynamically imported module') ||
-        event.reason?.message?.includes('Expected a JavaScript-or-Wasm module script')) {
-      console.warn('模块导入错误，忽略:', event.reason.message)
-      event.preventDefault()
+  const addListener = (target, type, handler) => {
+    try {
+      if (target && typeof target.addEventListener === 'function') {
+        target.addEventListener(type, handler)
+        return true
+      }
+    } catch (e) {
+      // ignore
     }
-  })
+    return false
+  }
 
-  window.addEventListener('error', (event) => {
-    console.error('全局错误:', event.error)
-    // 阻止错误冒泡
-    event.preventDefault()
-  })
+  const globalTarget = (typeof window !== 'undefined' && window) || (typeof globalThis !== 'undefined' && globalThis) || null
+
+  // only attach if environment supports addEventListener (H5/web)
+  if (globalTarget) {
+    addListener(globalTarget, 'unhandledrejection', (event) => {
+      console.error('未处理的 Promise 拒绝:', event.reason)
+
+      if (event.reason?.message?.includes('Failed to fetch dynamically imported module') ||
+          event.reason?.message?.includes('Expected a JavaScript-or-Wasm module script')) {
+        console.warn('模块导入错误，忽略:', event.reason.message)
+        try { event.preventDefault && event.preventDefault() } catch (e) {}
+      }
+    })
+
+    addListener(globalTarget, 'error', (event) => {
+      console.error('全局错误:', event && event.error ? event.error : event)
+      try { event.preventDefault && event.preventDefault() } catch (e) {}
+    })
+  } else {
+    // Non-H5 runtimes (native app) do not expose window.addEventListener.
+    // Keep a no-op to avoid runtime errors.
+    console.log('跳过全局错误监听：当前运行环境不支持 addEventListener')
+  }
 }
 
 onLaunch(() => {
