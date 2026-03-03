@@ -75,14 +75,31 @@ export default {
       }
       this.loading = true
       try {
-        const result = await this.directLogin(this.username, this.password)
-        if (result.success) {
+        // Use ApiHelper to ensure absolute backend URL on device builds
+        const { ApiHelper } = await import('@/utils/apiHelper.js')
+        const res = await ApiHelper.post('/login', {
+          username: this.username,
+          password: this.password
+        })
+        if (res && res.code === 1 && res.data) {
+          const { token, user, expiresIn, refreshToken, refreshExpiresIn } = res.data
+          uni.setStorageSync('token', token)
+          uni.setStorageSync('loginUser', JSON.stringify(user))
+          if (expiresIn) {
+            const expiryTime = Date.now() + expiresIn * 1000
+            uni.setStorageSync('tokenExpiry', expiryTime.toString())
+          }
+          if (refreshToken && refreshExpiresIn) {
+            uni.setStorageSync('refreshToken', refreshToken)
+            const refreshExpiry = Date.now() + refreshExpiresIn * 1000
+            uni.setStorageSync('refreshTokenExpiry', refreshExpiry.toString())
+          }
           uni.showToast({ title: '登录成功', icon: 'success' })
           setTimeout(() => {
             uni.switchTab({ url: '/pages/parcel-incoming/index' })
           }, 800)
         } else {
-          uni.showToast({ title: result.message || '登录失败', icon: 'none' })
+          uni.showToast({ title: (res && res.msg) || '登录失败', icon: 'none' })
         }
       } catch (err) {
         uni.showToast({ title: '登录请求失败，请检查网络', icon: 'none' })
@@ -91,37 +108,7 @@ export default {
       }
     },
 
-    directLogin(username, password) {
-      return new Promise((resolve, reject) => {
-        uni.request({
-          url: '/api/login',
-          method: 'POST',
-          data: { username, password },
-          header: { 'Content-Type': 'application/json' },
-          success: (res) => {
-            const data = res.data
-            if (data.code === 1 && data.data) {
-              const { token, user, expiresIn, refreshToken, refreshExpiresIn } = data.data
-              uni.setStorageSync('token', token)
-              uni.setStorageSync('loginUser', JSON.stringify(user))
-              if (expiresIn) {
-                const expiryTime = Date.now() + expiresIn * 1000
-                uni.setStorageSync('tokenExpiry', expiryTime.toString())
-              }
-              if (refreshToken && refreshExpiresIn) {
-                uni.setStorageSync('refreshToken', refreshToken)
-                const refreshExpiry = Date.now() + refreshExpiresIn * 1000
-                uni.setStorageSync('refreshTokenExpiry', refreshExpiry.toString())
-              }
-              resolve({ success: true, data: data.data })
-            } else {
-              resolve({ success: false, message: data.msg || '登录失败' })
-            }
-          },
-          fail: (err) => reject(err)
-        })
-      })
-    }
+    // directLogin is no longer used; ApiHelper handles requests with absolute baseUrl on device.
   }
 }
 </script>
