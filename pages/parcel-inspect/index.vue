@@ -69,6 +69,22 @@
         </view>
       </view>
       
+      <!-- 待发列表（仅包裹级展示，不展开 item 信息） -->
+      <view class="section">
+        <text class="section-title">待发列表</text>
+        <view class="list-header">
+          <text class="col col-itemno">Package No</text>
+          <text class="col col-seller">Process ID</text>
+          <text class="col col-qty">Items</text>
+        </view>
+        <view v-if="parcel && parcel.parcelId" class="list-row">
+          <text class="col col-itemno">{{ parcel.packageNo || '-' }}</text>
+          <text class="col col-seller">{{ parcel.processId || '-' }}</text>
+          <text class="col col-qty">{{ itemCount }}</text>
+        </view>
+        <view v-else class="no-items">暂无包裹数据</view>
+      </view>
+
       <view class="action-btns">
         <button class="btn btn-cancel" @click="goBack">取消</button>
         <button class="btn btn-default" @click="saveParcel">保存</button>
@@ -402,7 +418,7 @@ const canAddMoreItem = computed(() => {
 
 onLoad((options) => {
   // 确保用户信息已加载
-  if (!userStore.userInfo) {
+  if (!userStore.userInfo?.id) {
     userStore.checkLoginStatus()
   }
   // 打印 ApiHelper 调试信息（基于运行环境帮助排查 APK/模拟器网络问题）
@@ -1645,6 +1661,36 @@ function goBack() {
   color: #999;
   font-size: 28rpx;
 }
+
+.list-header, .list-row {
+  display: flex;
+  align-items: center;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.list-header {
+  font-weight: 600;
+  color: #666;
+}
+
+.list-row {
+  background: #fff;
+  color: #333;
+}
+
+.list-row .col, .list-header .col {
+  flex: 1;
+  padding: 0 10rpx;
+  font-size: 28rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.col-itemno { flex: 2; }
+.col-seller { flex: 4; }
+.col-qty { flex: 1; text-align: right; }
 
 .form-card {
   background: #fff;

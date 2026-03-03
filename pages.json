@@ -37,6 +37,7 @@
   "tabBar": {
     "color": "#7A7E83",
     "selectedColor": "#409EFF",
+    "fontSize": "20px",
     "borderStyle": "black",
     "backgroundColor": "#FFFFFF",
     "list": [
