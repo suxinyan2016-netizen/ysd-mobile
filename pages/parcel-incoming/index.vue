@@ -222,13 +222,13 @@ function onLoadMore() {
 // 跳转验收页面，先获取图片数据
 async function goToInspect(parcel) {
   try {
-    // 直接跳转到验收页面，仅传 parcelId，包裹图片在验收页加载
-    uni.navigateTo({ url: `/pages/parcel-inspect/index?parcelId=${parcel.parcelId}` })
+    // 直接跳转到验收页面，传 parcelId 并指示验收端隐藏下方的待发列表
+    uni.navigateTo({ url: `/pages/parcel-inspect/index?parcelId=${parcel.parcelId}&hidePending=1` })
   } catch (e) {
     uni.showToast({ title: '图片加载失败', icon: 'none' })
-    // 失败时也允许跳转
+    // 失败时也允许跳转（兼容）
     uni.navigateTo({
-      url: `/pages/parcel-inspect/index?parcelId=${parcel.parcelId}`
+      url: `/pages/parcel-inspect/index?parcelId=${parcel.parcelId}&hidePending=1`
     })
   }
 }

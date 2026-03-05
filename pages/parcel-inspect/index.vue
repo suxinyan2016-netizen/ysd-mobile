@@ -69,21 +69,7 @@
         </view>
       </view>
       
-      <!-- 待发列表（仅包裹级展示，不展开 item 信息） -->
-      <view class="section">
-        <text class="section-title">待发列表</text>
-        <view class="list-header">
-          <text class="col col-itemno">Package No</text>
-          <text class="col col-seller">Process ID</text>
-          <text class="col col-qty">Items</text>
-        </view>
-        <view v-if="parcel && parcel.parcelId" class="list-row">
-          <text class="col col-itemno">{{ parcel.packageNo || '-' }}</text>
-          <text class="col col-seller">{{ parcel.processId || '-' }}</text>
-          <text class="col col-qty">{{ itemCount }}</text>
-        </view>
-        <view v-else class="no-items">暂无包裹数据</view>
-      </view>
+      <!-- 待发列表（已删除） -->
 
       <view class="action-btns">
         <button class="btn btn-cancel" @click="goBack">取消</button>
