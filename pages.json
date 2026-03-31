@@ -15,6 +15,18 @@
       }
     },
     {
+      "path": "pages/parcel-incoming/create",
+      "style": {
+        "navigationBarTitleText": "新建包裹"
+      }
+    },
+    {
+      "path": "pages/parcel-incoming/item-entry",
+      "style": {
+        "navigationBarTitleText": "商品录入"
+      }
+    },
+    {
       "path": "pages/parcel-leaving/index",
       "style": {
         "navigationBarTitleText": "待发包裹",

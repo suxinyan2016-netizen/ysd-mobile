@@ -20,9 +20,9 @@
           @confirm="handleSearch"
         />
       </view>
-      <button class="scan-btn" @click="handleSearch">
-        📷
-      </button>
+        <button class="search-btn" @click="handleSearch">
+          搜索
+        </button>
     </view>
     
     <!-- 包裹列表 -->
@@ -161,50 +161,27 @@ async function loadParcels(reset = false) {
     console.log('查询待发包裹参数:', params)
     
     const result = await ApiHelper.get('/parcels', params)
-    
-    if (result.code) {
-      let newData = result.data.rows || []
-      
-      // 二次过滤，确保结果必须满足条件
-      newData = newData.filter(parcel => {
-        const isStatusMatch = parcel.status === 0
-        const isSenderMatch = parcel.senderId === currentUserId
-        console.log(`包裹 ${parcel.packageNo}: status=${parcel.status}, senderId=${parcel.senderId}, 匹配=${isStatusMatch && isSenderMatch}`)
-        return isStatusMatch && isSenderMatch
-      })
-      
-      console.log(`过滤后的包裹数量: ${newData.length}`)
-      
-      // 为每个包裹加载 label 图片
-      for (const parcel of newData) {
-        console.log(`包裹 ${parcel.packageNo} 原始数据:`, parcel)
-        parcel.expanded = false  // 初始状态为收起
-        parcel.loadingItems = false
-        await loadParcelImages(parcel)
-      }
-      
-      // 按 packageNo 排序
-      newData.sort((a, b) => {
-        const noA = a.packageNo || ''
-        const noB = b.packageNo || ''
-        return noA.localeCompare(noB)
-      })
-      
-      console.log('最终包裹列表:', newData)
-      
+
+    if (result && result.code === 1) {
+      // 兼容后端可能返回的结构：{ data: { list: [], total } } 或直接返回数组
+      const data = result.data || {}
+      const list = Array.isArray(data.list) ? data.list : (Array.isArray(result.data) ? result.data : [])
+
       if (reset) {
-        parcelList.value = newData
+        parcelList.value = list
       } else {
-        parcelList.value = [...parcelList.value, ...newData]
+        parcelList.value = parcelList.value.concat(list)
       }
-      
-      // 检查是否还有更多数据
-      hasMore.value = parcelList.value.length < result.data.total
+
+      // 更新分页状态
+      if (list.length < pageSize.value) {
+        hasMore.value = false
+      } else {
+        currentPage.value = currentPage.value + 1
+      }
     } else {
-      uni.showToast({
-        title: result.msg || '加载失败',
-        icon: 'none'
-      })
+      console.error('查询待发包裹返回异常:', result)
+      uni.showToast({ title: result?.message || '查询失败', icon: 'none' })
     }
   } catch (error) {
     console.error('加载包裹列表失败:', error)
@@ -681,22 +658,23 @@ onShow(() => {
     }
   }
   
-  .scan-btn {
-    width: 70rpx;
-    height: 70rpx;
+  .search-btn {
+    width: 105rpx; /* match 待收: +50% */
+    height: 60rpx; /* match 验收 按钮 */
+    line-height: 60rpx;
+    text-align: center;
+    background: linear-gradient(90deg, #409EFF, #66B1FF);
+    color: #fff;
+    border-radius: 8rpx; /* match action-btn style */
+    font-size: 20rpx; /* reduced font-size */
+    font-weight: 400; /* normal */
+    padding: 0 16rpx;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #409EFF;
-    color: #fff;
-    border-radius: 40rpx;
-    font-size: 36rpx;
-    line-height: 1;
-    padding: 0;
-    
-    &::after {
-      border: none;
-    }
+    box-shadow: 0 6rpx 18rpx rgba(64,158,255,0.12);
+    border: none;
+    margin-left: 8rpx; /* spacing from input */
   }
 }
 

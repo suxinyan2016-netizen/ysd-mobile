@@ -46,6 +46,8 @@
 </template>
 
 <script>
+import { ApiHelper } from '@/utils/apiHelper.js'
+
 export default {
   data() {
     return {
@@ -75,8 +77,7 @@ export default {
       }
       this.loading = true
       try {
-        // Use ApiHelper to ensure absolute backend URL on device builds
-        const { ApiHelper } = await import('@/utils/apiHelper.js')
+        // Use ApiHelper (statically imported) to send login request
         const res = await ApiHelper.post('/login', {
           username: this.username,
           password: this.password
@@ -102,7 +103,9 @@ export default {
           uni.showToast({ title: (res && res.msg) || '登录失败', icon: 'none' })
         }
       } catch (err) {
-        uni.showToast({ title: '登录请求失败，请检查网络', icon: 'none' })
+        // log full error for debugging and show message
+        console.error('login error:', err)
+        uni.showToast({ title: '登录请求失败: ' + (err?.message || ''), icon: 'none' })
       } finally {
         this.loading = false
       }

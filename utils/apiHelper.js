@@ -1,5 +1,23 @@
 export class ApiHelper {
-  static baseUrl = 'http://10.0.0.221:8080/api'
+  // Compute baseUrl dynamically:
+  // - If VITE_API_BASE (or VUE_APP_API_BASE) is provided use it
+  // - For local dev (localhost) use relative `/api` so Vite dev-server proxy applies (avoids CORS)
+  // - Otherwise fall back to the hard-coded backend host
+  static get baseUrl() {
+    try {
+        // vite env var support - read import.meta safely inside try/catch
+        const _meta = import.meta
+        const base = _meta && _meta.env && (_meta.env.VITE_API_BASE || _meta.env.VUE_APP_API_BASE)
+        if (base) return base
+    } catch (e) {}
+    try {
+      if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+        const h = window.location.hostname
+        if (h === 'localhost' || h === '127.0.0.1') return '/api'
+      }
+    } catch (e) {}
+    return 'http://10.0.0.221:8080/api'
+  }
   // 通用请求方法
   static request(url, method = 'GET', data = {}, headers = {}) {
     return new Promise((resolve, reject) => {
@@ -36,6 +54,16 @@ export class ApiHelper {
   }
   static delete(url, data = {}, headers = {}) {
     return this.request(url, 'DELETE', data, headers)
+  }
+  // 返回 base host（用于拼接图片绝对路径）
+  static getHost() {
+    try {
+      if (!this.baseUrl) return ''
+      // remove trailing /api if exists
+      return this.baseUrl.replace(/\/api\/?$/, '')
+    } catch (e) {
+      return this.baseUrl || ''
+    }
   }
   // 获取 token
   static getToken() {

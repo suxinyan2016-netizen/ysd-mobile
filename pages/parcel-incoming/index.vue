@@ -21,8 +21,11 @@
         />
       </view>
       
-      <button class="scan-btn" @click="handleSearch">
-        📷
+      <button class="search-btn" @click="handleSearch">
+        搜索
+      </button>
+      <button class="create-btn" @click="handleCreate">
+        新建
       </button>
     </view>
     
@@ -190,6 +193,15 @@ function handleScan() {
   })
 }
 
+// 新建入口（点击新建按钮）
+function handleCreate() {
+  try {
+    uni.navigateTo({ url: '/pages/parcel-incoming/create' })
+  } catch (e) {
+    uni.showToast({ title: '无法打开新建页面', icon: 'none' })
+  }
+}
+
 // 注销
 function handleLogout() {
   uni.showModal({
@@ -329,7 +341,7 @@ onShow(() => {
   padding: 20rpx;
   background: #fff;
   
-  .search-input {
+    .search-input {
     flex: 1;
     display: flex;
     align-items: center;
@@ -337,33 +349,54 @@ onShow(() => {
     border-radius: 40rpx;
     padding: 0 30rpx;
     height: 70rpx;
-    margin-right: 20rpx;
-    
+    margin-right: 16rpx;
+
     .search-icon {
       font-size: 32rpx;
       margin-right: 10rpx;
     }
-    
+
     input {
       flex: 1;
       font-size: 28rpx;
     }
   }
-  
-  .scan-btn {
-    width: 70rpx;
-    height: 70rpx;
-    line-height: 70rpx;
+
+  .search-btn {
+    width: 105rpx; /* +50% from 70rpx */
+    height: 60rpx; /* match 验收 按钮 */
+    line-height: 60rpx;
     text-align: center;
-    background: #409EFF;
+    background: linear-gradient(90deg, #409EFF, #66B1FF);
     color: #fff;
-    border-radius: 50%;
-    font-size: 32rpx;
-    padding: 0;
-    
-    &::after {
-      border: none;
-    }
+    border-radius: 8rpx; /* match action-btn style */
+    font-size: 20rpx; /* reduce font-size */
+    font-weight: 400; /* normal */
+    padding: 0 16rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6rpx 18rpx rgba(64,158,255,0.12);
+    border: none;
+    margin-right: 8rpx; /* increase spacing to next button */
+  }
+
+  .create-btn {
+    width: 105rpx; /* +50% */
+    height: 60rpx; /* match 验收 按钮 */
+    line-height: 60rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #FFCC00;
+    color: #2b2b2b;
+    border-radius: 8rpx; /* match action-btn */
+    border: 1rpx solid rgba(0,0,0,0.06);
+    padding: 0 16rpx;
+    font-size: 20rpx; /* reduce font-size */
+    font-weight: 400;
+    box-shadow: 0 6rpx 18rpx rgba(255,204,0,0.14);
+    margin-left: 18rpx; /* increase spacing from search button */
   }
 }
 
