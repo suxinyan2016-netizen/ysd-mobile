@@ -1,5 +1,15 @@
 ﻿<template>
   <view class="page-container">
+    <view class="topbar">
+      <view class="back" @click="goBack">
+        <view class="back-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M15.5 5.5L9 12l6.5 6.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+          </svg>
+        </view>
+      </view>
+      <view class="title">验收包裹</view>
+    </view>
     <!-- 步骤指示器 -->
     <view class="step-indicator">
       <text v-if="currentStep === 1">包裹信息</text>
@@ -73,7 +83,7 @@
 
       <view class="action-btns">
         <button class="btn btn-cancel" @click="goBack">取消</button>
-        <button class="btn btn-default" @click="saveParcel">保存</button>
+        <button class="btn btn-save" @click="saveParcel">保存</button>
         <button class="btn btn-primary" @click="nextStep">下一步</button>
       </view>
     </scroll-view>
@@ -195,7 +205,7 @@
       <!-- 操作按钮 -->
       <view class="action-btns">
         <button class="btn btn-default" @click="previousStep">上一步</button>
-        <button class="btn btn-success" @click="handleSaveClick">保存</button>
+        <button class="btn btn-save" @click="handleSaveClick">保存</button>
         <button 
           v-if="currentItemIndex < itemCount - 1"
           class="btn btn-primary" 
@@ -1517,12 +1527,12 @@ function goBack() {
 </script>
 
 <style lang="scss" scoped>
-.page-container {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #f8f8f8;
-}
+.page-container{ height:100vh; display:flex; flex-direction:column; background:#f8f8f8; padding-top:88rpx }
+.topbar { height:88rpx; background:#082567; color:#fff; display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; right:0; z-index:999 }
+.topbar .title { color:#fff; font-size:34rpx; font-weight:700 }
+.topbar .back { position:absolute; left:12rpx; top:50%; transform:translateY(-50%) }
+.topbar .back-icon { width:56rpx; height:56rpx; background:rgba(255,255,255,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6rpx 16rpx rgba(0,0,0,0.18) }
+.topbar .back-icon svg { width:32rpx; height:32rpx }
 
 .step-indicator {
   background: #fff;
@@ -1755,19 +1765,20 @@ function goBack() {
   }
 }
 
-.action-btns {
+  .action-btns {
   display: flex;
   gap: 20rpx;
-  padding: 30rpx 20rpx;
+  padding: 20rpx 20rpx;
   background: #fff;
 
   .btn {
     flex: 1;
-    height: 80rpx;
-    line-height: 80rpx;
-    font-size: 30rpx;
-    border-radius: 12rpx;
+    height: 60rpx;
+    line-height: 60rpx;
+    font-size: 26rpx;
+    border-radius: 8rpx;
     border: none;
+    padding: 0 40rpx;
 
     &::after {
       border: none;

@@ -97,7 +97,7 @@ export default {
           }
           uni.showToast({ title: '登录成功', icon: 'success' })
           setTimeout(() => {
-            uni.switchTab({ url: '/pages/parcel-incoming/index' })
+            uni.switchTab({ url: '/pages/home/index' })
           }, 800)
         } else {
           uni.showToast({ title: (res && res.msg) || '登录失败', icon: 'none' })

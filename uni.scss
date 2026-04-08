@@ -74,3 +74,81 @@ $uni-color-subtitle: #555555; // 二级标题颜色
 $uni-font-size-subtitle:26px;
 $uni-color-paragraph: #3F536E; // 文章段落颜色
 $uni-font-size-paragraph:15px;
+
+/* Unified save button style used across pages */
+.btn-save {
+	background: #409EFF;
+	color: #fff;
+	border: none;
+	border-radius: 8rpx;
+	height: 60rpx;
+	line-height: 60rpx;
+	padding: 0 40rpx;
+	font-size: 26rpx;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 6rpx 18rpx rgba(64,158,255,0.12);
+}
+
+.btn-save:disabled, .btn-save[disabled] {
+	opacity: 0.5;
+	pointer-events: none;
+}
+
+/* Stronger selector to override component-scoped .btn rules when both classes present */
+.btn.btn-save {
+	background: #409EFF !important;
+	color: #fff !important;
+}
+
+/* Global styles for parcel home icons */
+.parcel-home {
+		.icons {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			gap: 20rpx;
+			width: 100%;
+			padding: 0 20rpx;
+			box-sizing: border-box;
+			align-items: center;
+		}
+
+		.icon-card {
+			width: 100%;
+			height: 220rpx;
+			background: #fff;
+			border-radius: 18rpx;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			box-shadow: 0 8rpx 20rpx rgba(0,0,0,0.06);
+			cursor: pointer;
+			min-width: 0;
+		}
+
+		/* larger icon and centered label */
+		.icon {
+			font-size:72rpx;
+			margin-bottom:14rpx;
+			text-align:center;
+		}
+
+		.label {
+			font-size:26rpx;
+			color:#333;
+			text-align:center;
+		}
+
+	@media (max-width: 480px) {
+		.icon-card { width:180rpx; height:200rpx }
+		.icon { font-size:64rpx }
+		.label { font-size:24rpx }
+	}
+
+	/* ensure grid cells center content */
+	.icons {
+		place-items: center;
+	}
+}

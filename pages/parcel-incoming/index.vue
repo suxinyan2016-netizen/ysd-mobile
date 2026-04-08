@@ -1,16 +1,18 @@
 <template>
   <view class="page-container">
-    <!-- 用户信息栏 -->
-    <view class="user-bar">
-      <view class="user-info">
-        <text class="user-icon">👤</text>
-        <text class="user-name">{{ userStore.userInfo?.name || '用户' }}</text>
-      </view>
-      <button class="logout-btn" @click="handleLogout">注销</button>
-    </view>
-    
     <!-- 搜索栏 -->
-    <view class="search-bar">
+    <view class="topbar">
+        <view class="back" @click="goBack">
+          <view class="back-icon">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M15.5 5.5L9 12l6.5 6.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+            </svg>
+          </view>
+        </view>
+        <view class="title">待收包裹</view>
+      </view>
+
+      <view class="search-bar">
       <view class="search-input">
         <text class="search-icon">🔍</text>
         <input 
@@ -285,6 +287,12 @@ onShow(() => {
   userStore.checkLoginStatus()
   loadParcels(true)
 })
+
+import { smartBack } from '@/utils/navigation'
+
+function goBack(){
+  smartBack()
+}
 </script>
 
 <style lang="scss" scoped>
@@ -295,45 +303,13 @@ onShow(() => {
   background-color: #f8f8f8;
 }
 
-.user-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20rpx 20rpx 20rpx 20rpx;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
-  
-  .user-info {
-    display: flex;
-    align-items: center;
-    flex: 1;
-    
-    .user-icon {
-      font-size: 36rpx;
-      margin-right: 10rpx;
-    }
-    
-    .user-name {
-      font-size: 28rpx;
-      font-weight: 500;
-    }
-  }
-  
-  .logout-btn {
-    padding: 10rpx 30rpx;
-    background: rgba(255, 255, 255, 0.2);
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-    border-radius: 30rpx;
-    font-size: 24rpx;
-    line-height: 1.5;
-    margin-left: 20rpx;
-    
-    &:active {
-      background: rgba(255, 255, 255, 0.3);
-    }
-  }
-}
+.topbar { height:88rpx; background:#082567; color:#fff; display:flex; align-items:center; justify-content:center; position:relative }
+.title { color:#fff; font-size:34rpx; font-weight:700 }
+.back { position:absolute; left:12rpx; top:50%; transform:translateY(-50%) }
+.back-icon { width:56rpx; height:56rpx; background:rgba(255,255,255,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6rpx 16rpx rgba(0,0,0,0.18) }
+.back-icon svg { width:32rpx; height:32rpx }
+
+/* user-bar removed per UX request */
 
 .search-bar {
   display: flex;

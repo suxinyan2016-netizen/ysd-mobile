@@ -1,6 +1,13 @@
 {
   "pages": [
     {
+      "path": "pages/home/index",
+      "style": {
+        "navigationBarTitleText": "首页",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/login/index",
       "style": {
         "navigationBarTitleText": "登录",
@@ -8,16 +15,39 @@
       }
     },
     {
+      "path": "pages/parcel-home/index",
+      "style": {
+        "navigationBarTitleText": "包裹管理",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/parcel-query/index",
+      "style": {
+        "navigationBarTitleText": "包裹查询",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "个人资料",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/parcel-incoming/index",
       "style": {
         "navigationBarTitleText": "待收包裹",
+        "navigationStyle": "custom",
         "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/parcel-incoming/create",
       "style": {
-        "navigationBarTitleText": "新建包裹"
+        "navigationBarTitleText": "新建包裹",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -30,13 +60,15 @@
       "path": "pages/parcel-leaving/index",
       "style": {
         "navigationBarTitleText": "待发包裹",
+        "navigationStyle": "custom",
         "enablePullDownRefresh": true
       }
     },
     {
       "path": "pages/parcel-inspect/index",
       "style": {
-        "navigationBarTitleText": "验收包裹"
+        "navigationBarTitleText": "验收包裹",
+        "navigationStyle": "custom"
       }
     }
   ],
@@ -49,17 +81,29 @@
   "tabBar": {
     "color": "#7A7E83",
     "selectedColor": "#409EFF",
-    "fontSize": "20px",
+    "fontSize": "14px",
     "borderStyle": "black",
     "backgroundColor": "#FFFFFF",
     "list": [
       {
-        "pagePath": "pages/parcel-incoming/index",
-        "text": "待收"
+        "pagePath": "pages/home/index",
+        "text": "首页"
       },
       {
-        "pagePath": "pages/parcel-leaving/index",
-        "text": "待发"
+        "pagePath": "pages/parcel-home/index",
+        "text": "包裹"
+      },
+      {
+        "pagePath": "pages/goods/index",
+        "text": "商品"
+      },
+      {
+        "pagePath": "pages/account/index",
+        "text": "账户"
+      },
+      {
+        "pagePath": "pages/others/index",
+        "text": "其它"
       }
     ]
   }

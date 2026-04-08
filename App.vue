@@ -97,7 +97,7 @@ onHide(() => {
 </script>
 
 <style lang="scss">
-@use '@/static/common.scss';
+@import '@/static/common.scss';
 
 page {
   background-color: #f8f8f8;

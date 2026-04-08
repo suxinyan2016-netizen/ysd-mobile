@@ -1,5 +1,15 @@
 <template>
   <view class="page-container">
+    <view class="topbar">
+      <view class="back" @click="goBack">
+        <view class="back-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M15.5 5.5L9 12l6.5 6.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+          </svg>
+        </view>
+      </view>
+      <view class="title">新增包裹</view>
+    </view>
     <view class="step-indicator">录入包裹</view>
 
     <scroll-view class="step-content" scroll-y>
@@ -59,7 +69,7 @@
       </view>
 
       <view class="action-btns">
-        <button class="btn btn-default" :disabled="isSaving || savedOnce" @click="handleSave">保存</button>
+        <button class="btn btn-save" :disabled="isSaving || savedOnce" @click="handleSave">保存</button>
         <button class="btn btn-submit" :disabled="isSaving" @click="handleSubmit">提交</button>
         <button class="btn btn-primary" :disabled="isSaving || !parcel.parcelId" @click="handleNext">下一步</button>
       </view>
@@ -71,9 +81,14 @@
 import { ref, computed, nextTick } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { ApiHelper } from '@/utils/apiHelper'
+import { smartBack } from '@/utils/navigation'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
+
+function goBack() {
+  smartBack()
+}
 
 const parcel = ref({ packageNo: '' })
 // keep packageType as a standalone ref so radio-group binding works reliably
@@ -411,7 +426,6 @@ async function handleSubmit() {
   }
 }
 
-function goBack() { uni.navigateBack() }
 
 function handleNext() {
   if (!parcel.value.parcelId) {
@@ -440,7 +454,12 @@ onLoad(() => {
 
 <style lang="scss" scoped>
 /* reuse styles from 验收页面 for consistent look */
-.page-container { height:100vh; display:flex; flex-direction:column; background:#f8f8f8 }
+.page-container { height:100vh; display:flex; flex-direction:column; background:#f8f8f8; padding-top:88rpx }
+.topbar { height:88rpx; background:#082567; color:#fff; display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; right:0; z-index:999 }
+.topbar .title { color:#fff; font-size:34rpx; font-weight:700 }
+.topbar .back { position:absolute; left:12rpx; top:50%; transform:translateY(-50%); z-index:1001; }
+.topbar .back-icon { width:56rpx; height:56rpx; background:rgba(255,255,255,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6rpx 16rpx rgba(0,0,0,0.18); cursor:pointer }
+.topbar .back-icon svg { width:32rpx; height:32rpx }
 .step-indicator { background:#fff; padding:30rpx; text-align:center; font-size:32rpx; font-weight:bold; color:#409EFF; border-bottom:1rpx solid #eee }
 .step-content { flex:1; padding:20rpx; padding-bottom:20rpx }
 .info-card { background:#fff; border-radius:16rpx; padding:30rpx; margin-bottom:20rpx }
@@ -462,8 +481,8 @@ onLoad(() => {
 .add-photo { width:200rpx; height:200rpx; border:2rpx dashed #ddd; border-radius:12rpx; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#999 }
 .add-icon { font-size:60rpx; line-height:1 }
 .add-text { font-size:24rpx; margin-top:10rpx }
-.action-btns { display:flex; gap:20rpx; padding:20rpx 0 0 0; margin-top:20rpx }
-.action-btns .btn { flex:1; height:80rpx; line-height:80rpx; font-size:30rpx; border-radius:12rpx; border:none }
+  .action-btns { display:flex; gap:20rpx; padding:20rpx 0 0 0; margin-top:20rpx }
+  .action-btns .btn { flex:1; height:60rpx; line-height:60rpx; font-size:26rpx; border-radius:8rpx; border:none; padding:0 40rpx }
 .btn-cancel, .btn-default { background:#fff; border:1rpx solid #ddd; color:#666 }
 .btn-primary { background:#409EFF; color:#fff }
 .btn-submit { background:#67C23A; color:#fff }

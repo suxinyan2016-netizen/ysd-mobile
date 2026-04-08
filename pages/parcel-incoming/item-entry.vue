@@ -72,7 +72,7 @@
 
       <view class="action-btns">
         <button class="btn btn-default" @click="goBack">上一步</button>
-        <button class="btn btn-default" :disabled="isSaving" @click="handleSave">保存</button>
+        <button class="btn btn-save" :disabled="isSaving" @click="handleSave">保存</button>
         <button class="btn btn-submit" :disabled="isSaving" @click="handleSubmit">提交</button>
         <button class="btn btn-primary" :disabled="isSaving" @click="handleNext">下一步</button>
       </view>
@@ -169,6 +169,8 @@ async function loadDicts() {
 
       const recordedItemIds = ref([]) // store itemIds recorded when navigating between items so they can be updated on submit
 async function chooseImage() {
+  // ensure a tempKey exists before selecting images so any server-side fallback matching can use it
+  if (!item.value.tempKey) item.value.tempKey = 'tk_' + Date.now() + '_' + Math.floor(Math.random() * 1000000)
   uni.chooseImage({ count: 6 - itemImages.value.length, sizeType: ['compressed'], sourceType: ['camera','album'], success: async (res) => {
     for (const fp of res.tempFilePaths) {
       itemImages.value.push({ imageUrl: fp, thumbnailUrl: fp, uploaded: false, uploading: false })
@@ -244,18 +246,19 @@ async function handleSave() {
     if (!itemId) {
       const created = res.data
       itemId = (created && (created.itemId || created.id)) || null
-      if (!itemId && item.value.tempKey) {
-        // attempt to query item by tempKey (backend may support query by tempKey)
-        try {
-          const q = await ApiHelper.get('/items', { tempKey: item.value.tempKey, pageSize: 1 })
-          if (q && q.code === 1 && q.data && Array.isArray(q.data.rows) && q.data.rows.length) {
-            const found = q.data.rows[0]
-            itemId = found.itemId || found.id || null
-          }
-        } catch (err) {
-          console.warn('query by tempKey failed', err)
+    if (!itemId && item.value.tempKey) {
+      // attempt to query item by tempKey (backend may support query by tempKey)
+      // narrow by receiveParcelId and createBy to avoid matching previous items
+      try {
+        const q = await ApiHelper.get('/items', { tempKey: item.value.tempKey, receiveParcelId: item.value.receiveParcelId, createBy: userStore.userInfo?.name || userStore.userInfo?.id, pageSize: 1 })
+        if (q && q.code === 1 && q.data && Array.isArray(q.data.rows) && q.data.rows.length) {
+          const found = q.data.rows[0]
+          itemId = found.itemId || found.id || null
         }
+      } catch (err) {
+        console.warn('query by tempKey failed', err)
       }
+    }
     }
 
     // if we have a numeric itemId, update local item and upload images using that id
@@ -384,6 +387,8 @@ onMounted(() => {
       }
     }
   } catch(e) { console.warn('storage fallback for parcelTransfer failed', e) }
+  // ensure we have a tempKey for this item session so image association can fallback reliably
+  if (!item.value.tempKey) item.value.tempKey = 'tk_' + Date.now() + '_' + Math.floor(Math.random() * 1000000)
 })
 </script>
 
