@@ -247,15 +247,15 @@ onShow(() => {
 .result-list{ flex:1; padding:20rpx }
 .row-card{ background:#fff; padding:24rpx; border-radius:12rpx; margin-bottom:16rpx; display:flex; align-items:center }
 .row-main{ display:flex; gap:20rpx; width:100%; align-items:center }
-.pkg-no{ color:#409EFF; font-size:30rpx }
+.pkg-no{ color:#409EFF; font-size:26rpx }
 .pkg-type{ color:#666; margin-left:auto }
 .pkg-status{ margin-left:16rpx; color:#999 }
 
 .table-headers{ display:flex; gap:20rpx; padding:12rpx 18rpx; background:#fff; border-radius:8rpx; margin-bottom:12rpx; align-items:center }
 .table-headers .th{ font-size:26rpx; color:#666; font-weight:600 }
 .th-no{ flex:1 }
-.th-type{ width:160rpx; text-align:center }
-.th-status{ width:120rpx; text-align:center }
+.th-type{ width:140rpx; text-align:center }
+.th-status{ width:60rpx; text-align:center }
 
 .pager{ display:flex; align-items:center; justify-content:center; gap:24rpx; margin-top:12rpx }
 .pager-btn{ display:flex; align-items:center; gap:10rpx; padding:10rpx 18rpx; background:#fff; border-radius:12rpx; box-shadow:0 8rpx 18rpx rgba(0,0,0,0.06); cursor:pointer }
@@ -268,7 +268,7 @@ onShow(() => {
 .drawer-overlay{ position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.4); display:flex; align-items:flex-end; z-index:9999 }
 .drawer{ width:100%; max-height:82%; background:#fff; border-top-left-radius:16rpx; border-top-right-radius:16rpx; padding:0; display:flex; flex-direction:column; overflow:hidden }
 .drawer-header{ display:flex; justify-content:space-between; align-items:center; padding:20rpx 24rpx; border-bottom:1rpx solid #f0f0f0; background:#fff; box-shadow:0 6rpx 14rpx rgba(0,0,0,0.04); z-index:12 }
-.drawer-title{ font-size:32rpx; font-weight:700 }
+.drawer-title{ font-size:26rpx; font-weight:700 }
 .drawer-content{ overflow:auto; flex:1; padding:16rpx 24rpx 24rpx }
 .close{ width:56rpx; height:56rpx; border-radius:28rpx; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.04); cursor:pointer; box-shadow:0 6rpx 14rpx rgba(0,0,0,0.06); }
 .close svg{ width:28rpx; height:28rpx }
@@ -278,7 +278,7 @@ onShow(() => {
 .value{ color:#333; flex: 1 1 auto }
 
 .items-section{ margin-top:12rpx }
-.section-title{ font-size:28rpx; font-weight:600; margin-bottom:8rpx }
+.section-title{ font-size:26rpx; font-weight:600; margin-bottom:8rpx }
 .items-wrap{ display:flex; flex-direction:column; gap:10rpx }
 .item-card{ background:#fff; border-radius:10rpx; padding:12rpx; box-shadow:0 6rpx 14rpx rgba(0,0,0,0.04) }
 .item-card .item-row{ display:flex; justify-content:space-between; padding:6rpx 0 }

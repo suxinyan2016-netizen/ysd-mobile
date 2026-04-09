@@ -9,7 +9,6 @@
         </view>
       </view>
       <view class="title">个人资料</view>
-      <view class="right-top"><text class="logout-top" @click="handleLogout">退出</text></view>
     </view>
 
     <scroll-view class="content" scroll-y="true">

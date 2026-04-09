@@ -22,7 +22,7 @@
       <!-- 包裹基本信息 -->
       <view class="info-card">
         <view class="info-row">
-          <text class="label">包裹号:</text>
+          <text class="label">运单号:</text>
           <text class="value">{{ parcel.packageNo }}</text>
         </view>
         <view class="info-row">

@@ -47,6 +47,7 @@
 
 <script>
 import { ApiHelper } from '@/utils/apiHelper.js'
+import { useUserStore } from '@/stores/user'
 
 export default {
   data() {
@@ -86,6 +87,14 @@ export default {
           const { token, user, expiresIn, refreshToken, refreshExpiresIn } = res.data
           uni.setStorageSync('token', token)
           uni.setStorageSync('loginUser', JSON.stringify(user))
+          // update pinia user store so pages watching userInfo get notified
+          try {
+            const userStore = useUserStore()
+            userStore.token = token
+            userStore.userInfo = user
+            userStore.isLoggedIn = true
+            console.log('login: updated userStore', { user: userStore.userInfo })
+          } catch (e) { console.warn('update userStore failed', e) }
           if (expiresIn) {
             const expiryTime = Date.now() + expiresIn * 1000
             uni.setStorageSync('tokenExpiry', expiryTime.toString())

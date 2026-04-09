@@ -38,8 +38,19 @@ export class ApiHelper {
             console.log(`API ${url} 响应:`, res.statusCode, res.data)
             const body = res.data
 
-            // Detect token invalid/expired responses (backend may return 400 or specific message)
-            const isTokenError = body && ((body.code === 400 && /token invalid|expire/i.test(body.message || '')) || (/token invalid|expire/i.test(body.msg || '')))
+            // Detect token invalid/expired responses across common patterns
+            const msg = (body && (body.message || body.msg || '')) || ''
+            const lowerMsg = String(msg).toLowerCase()
+            const isTokenError = (
+              // HTTP level 401
+              res.statusCode === 401 ||
+              // backend numeric codes
+              (body && (body.code === 401 || body.code === 403)) ||
+              // some backends return 400 with token-specific messages
+              (body && body.code === 400 && /token invalid|expire|expired|invalid token/i.test(msg)) ||
+              // generic message inspection
+              /token invalid|expire|expired|invalid token/i.test(lowerMsg)
+            )
 
             if (isTokenError) {
               // Try to refresh token once (single-flight)
@@ -123,9 +134,7 @@ export class ApiHelper {
           })
         } finally {
           // clear promise so subsequent refresh attempts can re-create it
-          const p = this._refreshPromise
           this._refreshPromise = null
-          return p
         }
       })()
     }
@@ -134,20 +143,23 @@ export class ApiHelper {
 
   // UX for auth failure: clear storage and prompt user to login
   static _handleAuthFailure() {
+    // prevent multiple prompts
+    if (this._authModalShown) return
+    this._authModalShown = true
     try {
       uni.removeStorageSync('token')
       uni.removeStorageSync('loginUser')
       uni.removeStorageSync('tokenExpiry')
-      // keep refreshToken? remove for safety
+      // remove refresh token as well to force fresh login
       uni.removeStorageSync('refreshToken')
       uni.removeStorageSync('refreshTokenExpiry')
     } catch (e) {}
 
-    // show modal asking user to re-login
+    // show modal asking user to re-login, then redirect to login page
     try {
       uni.showModal({
         title: '需要重新登录',
-        content: '会话已过期，请重新登录以继续操作。',
+        content: '会话已过期或无效，请重新登录以继续操作。',
         showCancel: false,
         success() {
           try { uni.reLaunch({ url: '/pages/login/index' }) } catch (e) { console.warn('reLaunch login failed', e) }

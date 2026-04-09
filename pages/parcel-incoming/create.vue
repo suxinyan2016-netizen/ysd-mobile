@@ -14,9 +14,10 @@
 
     <scroll-view class="step-content" scroll-y>
       <view class="info-card">
+        <text class="card-title">包裹信息</text>
         <view class="info-row">
-          <text class="label">包裹号:</text>
-          <input class="form-input" v-model="parcel.packageNo" placeholder="请输入包裹号" />
+          <text class="label">运单号:</text>
+          <input class="form-input" v-model="parcel.packageNo" placeholder="请输入运单号" />
         </view>
         <view class="info-row">
           <text class="label">包裹类型:</text>
@@ -25,13 +26,16 @@
             <label class="radio-item"><radio value="2" :checked="packageType === '2'" />调拨</label>
           </radio-group>
         </view>
+        <!-- status row using unified modal -->
+        <view class="info-row">
+          <text class="label">状态:</text>
+          <view class="picker-display editable" @click="openModal('packageStatus', packageStatusNames, '选择状态')">{{ packageStatusNames[packageStatusIndex] }}</view>
+        </view>
           <!-- 货主 / 收货方 两栏 -->
           <view class="info-row two-col-row">
             <view class="col owner-col">
               <text class="label">货主:</text>
-              <picker mode="selector" :range="ownerNames" :value="ownerIndex" @change="onOwnerChange">
-                <view class="picker-display">{{ ownerNames[ownerIndex] || '请选择货主' }}</view>
-              </picker>
+                <view class="picker-display editable" @click="openModal('owner', ownerNames, '选择货主')">{{ ownerNames[ownerIndex] || '请选择货主' }}</view>
             </view>
             <view class="col receiver-col">
               <text class="label">收货方:</text>
@@ -40,7 +44,7 @@
           </view>
       </view>
 
-      <view class="section">
+      <view class="section upload-files">
         <text class="section-title">收货外观 (Appearance after received)</text>
         <view class="photo-list">
           <view v-for="(img, index) in receiverImages" :key="index" class="photo-item" @click="previewImageFull(img.imageUrl)">
@@ -54,7 +58,7 @@
         </view>
       </view>
 
-      <view class="section">
+      <view class="section upload-files">
         <text class="section-title">装箱单 (Packing List)</text>
         <view class="photo-list">
           <view v-for="(img, index) in packingListImages" :key="index" class="photo-item" @click="previewImageFull(img.imageUrl)">
@@ -73,14 +77,18 @@
         <button class="btn btn-submit" :disabled="isSaving" @click="handleSubmit">提交</button>
         <button class="btn btn-primary" :disabled="isSaving || !parcel.parcelId" @click="handleNext">下一步</button>
       </view>
+      <!-- reusable modal component -->
+      <ModalPicker v-if="showModal" :show="showModal" :title="modalTitle" :list="modalList" @select="selectModal" @close="closeModal" />
     </scroll-view>
   </view>
 </template>
 
 <script setup>
+import ModalPicker from '@/components/ModalPicker.vue'
 import { ref, computed, nextTick } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { ApiHelper } from '@/utils/apiHelper'
+import { uploadFile } from '@/utils/uploadHelper'
 import { smartBack } from '@/utils/navigation'
 import { useUserStore } from '@/stores/user'
 
@@ -103,10 +111,40 @@ const savedOnce = ref(false)
 const owners = ref([])
 const ownerIndex = ref(0)
 const ownerNames = computed(() => owners.value.map(o => o?.name || o?.username || ''))
+// package status selection (0:计划中,1:在途,2:入库,9:异常)
+const packageStatus = ref(0)
+const packageStatusIndex = ref(0)
+const packageStatusValues = [0,1,2,9]
+const packageStatusNames = ['计划中','在途','入库','异常']
 const currentUserName = computed(() => userStore.userInfo?.name || userStore.userInfo?.username || '')
 
 function onOwnerChange(e) {
   ownerIndex.value = Number(e.detail.value)
+}
+
+// modal picker state (re-use same approach)
+const showModal = ref(false)
+const modalList = ref([])
+const modalTitle = ref('')
+const modalField = ref('')
+
+function openModal(field, list, title) {
+  modalField.value = field
+  modalList.value = Array.isArray(list) ? list : []
+  modalTitle.value = title || ''
+  showModal.value = true
+}
+
+function closeModal() { showModal.value = false }
+
+function selectModal(idx) {
+  if (modalField.value === 'owner') {
+    ownerIndex.value = idx
+  } else if (modalField.value === 'packageStatus') {
+    packageStatusIndex.value = idx
+    packageStatus.value = packageStatusValues[idx]
+  }
+  showModal.value = false
 }
 
 function onPackageTypeChange(e) {
@@ -128,17 +166,18 @@ async function loadOwners() {
   } catch (err) {
     console.warn('loadOwners failed', err)
   }
-  // fallback: current user only
-  if (userStore.userInfo) {
-    owners.value = [userStore.userInfo]
-    ownerIndex.value = 0
-  }
+      if (res && res.code === 1 && Array.isArray(res.data) && res.data.length) {
+        // filter out admin/system user with id===1
+        owners.value = res.data.filter(u => Number(u.id || u.userId) !== 1)
+        ownerIndex.value = 0
+        return
+      }
 }
 
-const imageTypeConfig = {
-  PACKAGE_RECEIVER: { allow_multiple: false, max_count: 1 },
-  PACKING_LIST: { allow_multiple: true, max_count: 10 }
-}
+    if (userStore.userInfo && Number(userStore.userInfo.id) !== 1) {
+      owners.value = [userStore.userInfo]
+      ownerIndex.value = 0
+    }
 
 const canAddMoreReceiver = computed(() => {
   const cfg = imageTypeConfig.PACKAGE_RECEIVER
@@ -150,35 +189,8 @@ const canAddMorePacking = computed(() => packingListImages.value.length < imageT
 
 // 上传单张图片到后端（复用验收页实现）
 async function uploadImage(filePath, moduleType, recordId, imageType) {
-  return new Promise((resolve, reject) => {
-    try {
-      const uploadUrl = ApiHelper.baseUrl + '/image/manage/upload'
-      let username = null
-      try {
-        const saved = uni.getStorageSync('loginUser')
-        if (saved) {
-          const u = JSON.parse(saved)
-          username = u?.name || u?.username || null
-        }
-      } catch (e) {}
-      const headers = ApiHelper.getAuthHeaders(username ? { username } : {})
-      uni.uploadFile({
-        url: uploadUrl,
-        filePath,
-        name: 'file',
-        header: headers,
-        formData: { moduleType, recordId, imageType },
-        success: (uploadRes) => {
-          try {
-            const data = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
-            if (data && data.code === 1) resolve(data.data)
-            else reject(new Error((data && data.msg) || '上传失败'))
-          } catch (err) { reject(err) }
-        },
-        fail: (err) => reject(err)
-      })
-    } catch (err) { reject(err) }
-  })
+  // delegate to shared upload helper
+  return uploadFile(filePath, moduleType, recordId, imageType)
 }
 
 async function chooseReceiverImage() {
@@ -266,7 +278,7 @@ function previewImageFull(imageUrl) {
 
 async function persistParcel(status = 1) {
   if (!parcel.value.packageNo || parcel.value.packageNo.trim() === '') {
-    uni.showToast({ title: '请填写包裹号', icon: 'none' })
+    uni.showToast({ title: '请填写运单号', icon: 'none' })
     return null
   }
   const payload = {
@@ -462,16 +474,19 @@ onLoad(() => {
 .topbar .back-icon svg { width:32rpx; height:32rpx }
 .step-indicator { background:#fff; padding:30rpx; text-align:center; font-size:32rpx; font-weight:bold; color:#409EFF; border-bottom:1rpx solid #eee }
 .step-content { flex:1; padding:20rpx; padding-bottom:20rpx }
-.info-card { background:#fff; border-radius:16rpx; padding:30rpx; margin-bottom:20rpx }
-  .info-row { display:flex; justify-content:flex-start; align-items:center; margin-bottom:20rpx; font-size:28rpx }
-  .label { width:auto; color:#999; margin-right:20rpx; text-align:right }
-  .form-input { width:460rpx; flex:none; height:70rpx; border:1rpx solid #ddd; border-radius:8rpx; padding:0 20rpx; font-size:24rpx }
+  .info-card { background:#fff; border-radius:16rpx; padding:30rpx; margin-bottom:20rpx }
+  .card-title { display:block; font-size:30rpx; font-weight:700; color:#333; margin-bottom:12rpx }
+  .info-row { display:flex; justify-content:flex-start; align-items:center; gap:12rpx; padding:9rpx 0; font-size:24rpx }
+  .info-row:last-child { padding-bottom:0 }
+  .label { width:auto; color:#666; margin-right:20rpx; text-align:right; font-size:22rpx }
+  .form-input { width:460rpx; flex:none; height:70rpx; border:none; border-bottom:1rpx solid #e6e6e6; border-radius:0; padding:0 8rpx; font-size:22rpx }
   .two-col-row { display:flex; justify-content:space-between; gap:20rpx }
   .two-col-row .col { display:flex; align-items:center; gap:12rpx }
   .two-col-row .owner-col { flex:1 }
   .two-col-row .receiver-col { flex:1 }
-  .picker-display { height:70rpx; display:flex; align-items:center; padding:0 20rpx; border:1rpx solid #ddd; border-radius:8rpx; background:#fff; color:#333 }
-  .receiver-display { height:70rpx; display:flex; align-items:center; padding:0 20rpx; border:1rpx solid #f0f0f0; border-radius:8rpx; background:#fafafa; color:#666 }
+  .picker-display { height:70rpx; display:flex; align-items:center; padding:0 8rpx; border:none; border-bottom:1rpx solid #e6e6e6; background:transparent; color:#333 }
+  .picker-display.editable { cursor:pointer }
+  .receiver-display { height:70rpx; display:flex; align-items:center; padding:0 20rpx; border:none; background:transparent; color:#666 }
 .section { background:#fff; border-radius:16rpx; padding:30rpx; margin-bottom:20rpx }
 .section-title { display:block; font-size:30rpx; font-weight:bold; color:#333; margin-bottom:20rpx }
 .photo-list { display:flex; flex-wrap:wrap; gap:20rpx }
@@ -490,5 +505,8 @@ onLoad(() => {
 .radio-group { display:flex; gap:40rpx; align-items:center }
 .radio-item { display:flex; align-items:center; gap:12rpx; font-size:24rpx; color:#333 }
 .radio-item radio, .radio-item .uni-radio { transform: scale(1.1); }
+
+/* modal styles (same as parcel-add) */
+/* modal styles moved to components/ModalPicker.vue */
 </style>
 

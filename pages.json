@@ -51,7 +51,43 @@
       }
     },
     {
+      "path": "pages/item-home/index",
+      "style": {
+        "navigationBarTitleText": "商品查询",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/item-owner/index",
+      "style": {
+        "navigationBarTitleText": "货主库存",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/item-warehouse/index",
+      "style": {
+        "navigationBarTitleText": "仓库库存",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/parcel-add/create",
+      "style": {
+        "navigationBarTitleText": "新建包裹",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/parcel-incoming/item-entry",
+      "style": {
+        "navigationBarTitleText": "商品录入"
+      }
+    },
+    {
+      "path": "pages/parcel-add/item-entry",
       "style": {
         "navigationBarTitleText": "商品录入"
       }
@@ -93,8 +129,8 @@
         "pagePath": "pages/parcel-home/index",
         "text": "包裹"
       },
-      {
-        "pagePath": "pages/goods/index",
+        {
+        "pagePath": "pages/item-home/index",
         "text": "商品"
       },
       {

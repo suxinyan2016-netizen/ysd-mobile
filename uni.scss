@@ -91,6 +91,19 @@ $uni-font-size-paragraph:15px;
 	box-shadow: 0 6rpx 18rpx rgba(64,158,255,0.12);
 }
 
+/* Shared upload controls styling */
+.upload-files .photo-list { display:flex; flex-wrap:wrap; gap:20rpx }
+.upload-files .photo-item { width:200rpx; height:200rpx; border-radius:12rpx; position:relative; overflow:hidden; background:#fff; display:flex; align-items:center; justify-content:center }
+.upload-files .photo-item image{ width:100%; height:100% }
+.upload-files .delete-btn { position:absolute; top:-8rpx; right:-8rpx; width:38rpx; height:38rpx; background:#ff4d4f; color:#fff; border-radius:50%; text-align:center; line-height:38rpx; font-size:24rpx; z-index:10 }
+.upload-files .add-photo { width:200rpx; height:200rpx; border:2rpx dashed #ddd; border-radius:12rpx; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#999 }
+.upload-files .add-icon { font-size:60rpx; line-height:1 }
+.upload-files .add-text { font-size:24rpx; margin-top:10rpx }
+.upload-files .pdf-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#f3f3f3; color:#c0392b; font-weight:700 }
+
+/* helper class to apply these styles in pages */
+.photo-list, .photo-item, .add-photo, .add-icon, .add-text, .delete-btn, .pdf-placeholder { }
+
 .btn-save:disabled, .btn-save[disabled] {
 	opacity: 0.5;
 	pointer-events: none;
@@ -106,8 +119,8 @@ $uni-font-size-paragraph:15px;
 .parcel-home {
 		.icons {
 			display: grid;
-			grid-template-columns: repeat(3, 1fr);
-			gap: 20rpx;
+			grid-template-columns: repeat(2, 1fr);
+			gap: 144rpx 20rpx;
 			width: 100%;
 			padding: 0 20rpx;
 			box-sizing: border-box;
@@ -116,7 +129,7 @@ $uni-font-size-paragraph:15px;
 
 		.icon-card {
 			width: 100%;
-			height: 220rpx;
+			height: 165rpx;
 			background: #fff;
 			border-radius: 18rpx;
 			display: flex;
@@ -130,25 +143,25 @@ $uni-font-size-paragraph:15px;
 
 		/* larger icon and centered label */
 		.icon {
-			font-size:72rpx;
-			margin-bottom:14rpx;
+			font-size:54rpx;
+			margin-bottom:10rpx;
 			text-align:center;
 		}
 
 		.label {
-			font-size:26rpx;
+			font-size:20rpx;
 			color:#333;
 			text-align:center;
 		}
 
 	@media (max-width: 480px) {
-		.icon-card { width:180rpx; height:200rpx }
-		.icon { font-size:64rpx }
-		.label { font-size:24rpx }
+		.icon-card { width:180rpx; height:150rpx }
+		.icon { font-size:48rpx }
+		.label { font-size:18rpx }
 	}
 
-	/* ensure grid cells center content */
+	/* ensure grid cells align items to top and center horizontally */
 	.icons {
-		place-items: center;
+		place-items: start center;
 	}
 }

@@ -18,7 +18,7 @@
         <input 
           v-model="searchText"
           type="text"
-          placeholder="搜索包裹号"
+          placeholder="搜索运单号"
           @confirm="handleSearch"
         />
       </view>
