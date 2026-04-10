@@ -44,14 +44,17 @@ export function chooseFileFlexible({ count = 1, allowPdf = true } = {}) {
   })
 }
 
-export function uploadFile(filePath, moduleType, recordId, imageType) {
+export function uploadFile(filePath, moduleType, recordId, imageType, tempKey) {
   return new Promise((resolve, reject) => {
     try {
       const uploadUrl = ApiHelper.baseUrl + '/image/manage/upload'
       let username = null
       try { const saved = uni.getStorageSync('loginUser'); if (saved) { const u = JSON.parse(saved); username = u?.name || u?.username || null } } catch (e) {}
       const headers = ApiHelper.getAuthHeaders(username ? { username } : {})
-      uni.uploadFile({ url: uploadUrl, filePath, name: 'file', header: headers, formData: { moduleType, recordId, imageType }, success: (uploadRes) => {
+      const formData = { moduleType, recordId, imageType }
+      // include tempKey when provided so backend can associate uploads with a transient owner
+      if (tempKey) formData.tempKey = tempKey
+      uni.uploadFile({ url: uploadUrl, filePath, name: 'file', header: headers, formData, success: (uploadRes) => {
         try {
           const data = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
           if (data && data.code === 1) resolve(data.data)
@@ -60,4 +63,25 @@ export function uploadFile(filePath, moduleType, recordId, imageType) {
       }, fail: (err) => reject(err) })
     } catch (err) { reject(err) }
   })
+}
+
+/**
+ * 尝试将临时上传的附件（以 tempKey 关联）绑定到真实记录ID上。
+ * 返回后端响应或者在不支持时抛出错误。
+ * @param {string} moduleType
+ * @param {string} tempKey
+ * @param {number|string} recordId
+ */
+export async function reassignAttachments(moduleType, tempKey, recordId) {
+  if (!tempKey) throw new Error('missing tempKey')
+  try {
+    const res = await ApiHelper.post('/image/manage/reassign', { moduleType, tempKey, recordId })
+    if (!res || res.code !== 1) {
+      throw new Error(res?.msg || 'reassign failed')
+    }
+    return res.data
+  } catch (err) {
+    // bubble up the error so callers can decide whether to treat as fatal
+    throw err
+  }
 }

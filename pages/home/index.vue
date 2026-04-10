@@ -303,11 +303,11 @@ export default {
 .card-body.two-col .label, .card-body.two-col .num { width:100%; text-align:center }
 .stat-row { display:flex; justify-content:space-between; align-items:center; padding:10rpx 0; border-bottom:1rpx solid #f0f0f0 }
 .stat-row:last-child { border-bottom:0 }
-.label { color:#666; font-size:26rpx }
-.value { color:#222; font-size:28rpx; font-weight:700 }
-.section-sub { color:#999; font-size:24rpx; margin-top:6rpx; margin-bottom:6rpx }
-.list-row { display:flex; justify-content:space-between; padding:8rpx 0; border-bottom:1rpx dashed #f4f4f4 }
-.list-row:last-child { border-bottom:0 }
+.label { color:#666; font-size:22rpx }
+.value { color:#222; font-size:24rpx; font-weight:700 }
+.section-sub { color:#999; font-size:20rpx; margin-top:4rpx; margin-bottom:4rpx }
+.inline-grid { display:flex; gap:8rpx; margin-top:6rpx; flex-wrap:wrap; }
+.inline-grid .col { flex:0 0 48%; min-width:0; background:#fafafa; border-radius:8rpx; padding:8rpx; display:flex; flex-direction:column; align-items:center; margin-bottom:8rpx }
 .grid { display:flex; flex-wrap:wrap; gap:12rpx; margin-top:8rpx }
 .col { flex:1 1 50%; min-width:140rpx; display:flex; flex-direction:column; align-items:flex-start }
 .num { font-size:36rpx; font-weight:800; margin-top:10rpx }
@@ -316,7 +316,7 @@ export default {
 .num-pay { color:#ff4d4f }
 .list-row { display:flex; justify-content:space-between; align-items:center; padding:10rpx 0; border-bottom:1rpx solid #f4f4f4 }
 .list-row:last-child { border-bottom:0 }
-.value { color:#222; font-size:28rpx; font-weight:700 }
+.value { color:#222; font-size:24rpx; font-weight:700 }
 .badge { display:none }
 .inline-grid { display:flex; gap:12rpx; margin-top:8rpx; flex-wrap:wrap; }
 .inline-grid .col { flex:0 0 48%; min-width:0; background:#fafafa; border-radius:8rpx; padding:14rpx; display:flex; flex-direction:column; align-items:center; margin-bottom:12rpx }

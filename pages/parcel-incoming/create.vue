@@ -159,25 +159,27 @@ async function loadOwners() {
     const res = await ApiHelper.get('/users/all')
     // 期望返回格式 { code: 1, data: [ ...users ] }
     if (res && res.code === 1 && Array.isArray(res.data) && res.data.length) {
-      owners.value = res.data
+      // filter out admin/system user with id===1
+      owners.value = res.data.filter(u => Number(u.id || u.userId) !== 1)
       ownerIndex.value = 0
       return
     }
   } catch (err) {
     console.warn('loadOwners failed', err)
   }
-      if (res && res.code === 1 && Array.isArray(res.data) && res.data.length) {
-        // filter out admin/system user with id===1
-        owners.value = res.data.filter(u => Number(u.id || u.userId) !== 1)
-        ownerIndex.value = 0
-        return
-      }
 }
 
     if (userStore.userInfo && Number(userStore.userInfo.id) !== 1) {
       owners.value = [userStore.userInfo]
       ownerIndex.value = 0
     }
+
+// 图片类型配置（与其他页面保持一致）
+const imageTypeConfig = {
+  PACKAGE_RECEIVER: { allow_multiple: false, max_count: 1 },
+  PACKING_LIST: { allow_multiple: true, max_count: 10 },
+  ITEM_IMAGE: { allow_multiple: true, max_count: 9 }
+}
 
 const canAddMoreReceiver = computed(() => {
   const cfg = imageTypeConfig.PACKAGE_RECEIVER

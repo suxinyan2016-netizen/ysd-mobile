@@ -32,28 +32,43 @@
         <!-- package type occupies its own row -->
         <view class="info-row">
           <text class="label">包裹类型:</text>
-          <view class="readonly-display">{{ packageType === '1' ? '退货' : '调拨' }}</view>
+          <view class="readonly-display">{{ packageType === '1' ? '退货' : (packageType === '3' ? '发售' : '调拨') }}</view>
         </view>
 
         <!-- sender occupies its own row -->
         <view class="info-row">
           <text class="label">寄出人:</text>
-          <template v-if="packageType === '1'">
-            <input class="form-input small-input" v-model="senderName" placeholder="请输入寄出人" />
+          <template v-if="senderReadonly">
+            <view class="readonly-display">{{ senderName || keeperNameFromRoute || currentUserName }}</view>
           </template>
           <template v-else>
-            <view class="picker-display editable" @click="openModal('sender', senderNames, '选择寄出人')">{{ senderNames[senderIndex] || '请选择寄出人' }}</view>
+            <template v-if="packageType === '1'">
+              <input class="form-input small-input" v-model="senderName" placeholder="请输入寄出人" />
+            </template>
+            <template v-else>
+              <view class="picker-display editable" @click="openModal('sender', senderNames, '选择寄出人')">{{ senderNames[senderIndex] || '请选择寄出人' }}</view>
+            </template>
           </template>
         </view>
 
         <!-- receiver occupies its own row -->
         <view class="info-row">
           <text class="label">收货方:</text>
-          <view class="picker-display editable" @click="openModal('receiver', receiverNames, '选择收货方')">{{ receiverNames[receiverIndex] || '请选择收货方' }}</view>
+          <template v-if="receiverManual">
+            <input class="form-input" v-model="receiverNameInput" placeholder="请输入收货方姓名" />
+          </template>
+          <template v-else>
+            <view class="picker-display editable" @click="openModal('receiver', receiverNames, '选择收货方')">{{ receiverNames[receiverIndex] || '请选择收货方' }}</view>
+          </template>
+        </view>
+
+        <view v-if="receiverManual" class="info-row">
+          <text class="label">收货地址:</text>
+          <input class="form-input" v-model="receiverAddressInput" placeholder="请输入收货地址" />
         </view>
 
         <!-- demands (owner requirements) occupy full row -->
-        <view class="info-row">
+        <view v-if="!hideDemands" class="info-row">
           <text class="label">货主要求:</text>
           <view class="demand-options" style="flex:1">
             <view v-for="opt in demandsOptions" :key="opt.code" :class="['demand-option', { active: demands.includes(opt.code) } ]" @click="toggleDemand(opt.code)">
@@ -105,6 +120,7 @@
 <script setup>
 import ModalPicker from '@/components/ModalPicker.vue'
 import { ref, computed, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { onLoad } from '@dcloudio/uni-app'
 import { ApiHelper } from '@/utils/apiHelper'
 import { chooseFileFlexible, uploadFile } from '@/utils/uploadHelper'
@@ -119,10 +135,23 @@ function goBack() {
 
 const parcel = ref({ packageNo: '' })
 const packageType = ref('2')
+// route query helpers (support opening from item detail)
+const route = (typeof useRoute === 'function') ? useRoute() : { query: {}, params: {} }
+const routeQuery = (route && (route.query || route.params)) || {}
+const fromItemId = ref(routeQuery.fromItemId || routeQuery.itemId || '')
+const fromItemFlow = ref(!!fromItemId.value)
+const senderReadonly = ref(routeQuery.senderReadonly === '1' || routeQuery.senderReadonly === 'true' || routeQuery.senderReadonly === 1 || routeQuery.senderReadonly === true)
+const receiverManual = ref(routeQuery.receiverManual === '1' || routeQuery.receiverManual === 'true' || routeQuery.receiverManual === 1 || routeQuery.receiverManual === true)
+const hideDemands = ref(routeQuery.hideDemands === '1' || routeQuery.hideDemands === 'true' || routeQuery.hideDemands === 1 || routeQuery.hideDemands === true)
+const keeperIdFromRoute = ref(routeQuery.keeperId || '')
+const keeperNameFromRoute = ref(routeQuery.keeperName ? decodeURIComponent(routeQuery.keeperName) : '')
 // package label files (may include pdf)
 const packageLabelFiles = ref([])
 // sender appearance images (formerly packingListImages)
 const senderImages = ref([])
+// receiver/packing images that may be present when loading existing parcels
+const receiverImages = ref([])
+const packingListImages = ref([])
 // package status: 0 计划中, 1 在途, 2 入库, 9 异常 (default 0)
 const packageStatus = ref(0)
 const packageStatusIndex = ref(0)
@@ -144,6 +173,8 @@ const senderNames = computed(() => senderList.value.map(u => u?.name || u?.usern
 const receiverIndex = ref(0)
 const receiverId = ref(null)
 const receiverNames = computed(() => senderList.value.map(u => u?.name || u?.username || ''))
+const receiverNameInput = ref('')
+const receiverAddressInput = ref('')
 const currentUserName = computed(() => userStore.userInfo?.name || userStore.userInfo?.username || '')
 
 function onPackageStatusChange(e) { const idx = Number(e.detail.value); packageStatusIndex.value = idx; packageStatus.value = packageStatusValues[idx] }
@@ -175,7 +206,20 @@ async function loadSenderList() {
     if (res && res.code === 1 && Array.isArray(res.data)) {
       // filter out admin/system user with id===1
       senderList.value = res.data.filter(u => Number(u.id || u.userId) !== 1)
-      senderIndex.value = 0
+      // if keeperIdFromRoute provided, prefer that as sender
+      if (keeperIdFromRoute && keeperIdFromRoute.value) {
+        const idx = senderList.value.findIndex(u => String(u.id || u.userId) === String(keeperIdFromRoute.value))
+        if (idx >= 0) {
+          senderIndex.value = idx
+          const sel = senderList.value[idx]
+          senderId.value = sel ? (sel.id || sel.userId) : null
+          senderName.value = sel ? (sel.name || sel.username) : (keeperNameFromRoute.value || senderName.value)
+        } else {
+          senderIndex.value = 0
+        }
+      } else {
+        senderIndex.value = 0
+      }
       receiverIndex.value = 0
       const first = senderList.value[0]
       receiverId.value = first ? (first.id || first.userId) : null
@@ -280,13 +324,59 @@ function handleLabelClick(f) {
 
 async function persistParcel(status = 1) {
   if (!parcel.value.packageNo || parcel.value.packageNo.trim() === '') { uni.showToast({ title: '请填写运单号', icon: 'none' }); return null }
-    const payload = {
+
+  // check existing parcel by packageNo
+  try {
+    const chk = await ApiHelper.get('/parcels', { packageNo: parcel.value.packageNo, pageSize: 1 })
+    if (chk && chk.code === 1 && chk.data && Array.isArray(chk.data.rows) && chk.data.rows.length) {
+      const existing = chk.data.rows[0]
+      const existingStatus = Number(existing.status || existing.packageStatus || 0)
+      if (existingStatus === 0) {
+        // parcel exists and is in '计划中' -> ask whether to add to existing parcel
+        const confirmed = await new Promise((resolve) => {
+          uni.showModal({ title: '提示', content: '该运单已创建，需要将商品添加到该包裹内么？', success(resm) { resolve(!!resm.confirm) } })
+        })
+        if (confirmed) {
+          // update item to point to this parcel and return parcel id (do not create new parcel)
+              if (fromItemFlow.value && fromItemId.value) {
+            try {
+              const parcelIdFound = existing.parcelId || existing.id
+              parcel.value.parcelId = parcelIdFound
+              const updateData = { itemId: Number(fromItemId.value), itemStatus: 2, sendParcelId: parcelIdFound, sendDate: new Date().toISOString().split('T')[0] }
+              const r = await ApiHelper.put('/items', updateData)
+              if (r && r.code === 1) {
+                uni.showToast({ title: '已加入现有包裹', icon: 'success' })
+                return parcelIdFound
+              } else { throw new Error(r?.msg || '更新item失败') }
+            } catch (ue) { throw ue }
+          } else {
+            // not from item flow, just return existing parcel id to caller
+            const pid = existing.parcelId || existing.id
+            parcel.value.parcelId = pid
+            return pid
+          }
+        } else {
+          // user cancelled -> abort
+          throw new Error('用户取消')
+        }
+      } else {
+        // parcel exists and is not in status 0 -> cannot add
+        uni.showModal({ title: '提示', content: '该运单已存在，无法加入包裹，请检查。', showCancel: false })
+        throw new Error('运单已存在')
+      }
+    }
+  } catch (chkErr) {
+    // if check fails, continue to attempt creation
+    console.warn('parcel check failed', chkErr)
+  }
+
+  const payload = {
     packageNo: parcel.value.packageNo,
     packageType: Number(packageType.value),
     // owner is current logged-in user (不可编辑)
     ownerId: userStore.userInfo?.id,
-    // receiver selected from user list (fallback to current user)
-    receiverId: receiverId.value || userStore.userInfo?.id,
+    // receiver selected from user list (fallback to current user) -- if receiverManual, do not set receiverId
+    receiverId: (receiverManual && receiverManual.value) ? undefined : (receiverId.value || userStore.userInfo?.id),
     // preserve existing `status` parameter (used for save/submit flow)
     status,
     // package shipping status (0:计划中,1:在途,2:入库,9:异常)
@@ -295,17 +385,25 @@ async function persistParcel(status = 1) {
     // include demands as comma-separated string when present
     if (demands.value && demands.value.length) payload.demands = demands.value.join(',')
 
-    // include receiverName when a receiver is selected
+    // include receiverName when a receiver is selected or when receiverManual
     try {
-      const recv = (senderList.value && senderList.value[receiverIndex.value]) || null
-      const recvName = recv ? (recv.name || recv.username) : (receiverNames && receiverNames[receiverIndex.value])
-      if (recvName) payload.receiverName = recvName
+      if (receiverManual && receiverManual.value && receiverNameInput && receiverNameInput.value) {
+        payload.receiverName = receiverNameInput.value
+        if (receiverAddressInput && receiverAddressInput.value) payload.receiverAddress = receiverAddressInput.value
+      } else {
+        const recv = (senderList.value && senderList.value[receiverIndex.value]) || null
+        const recvName = recv ? (recv.name || recv.username) : (receiverNames && receiverNames[receiverIndex.value])
+        if (recvName) payload.receiverName = recvName
+      }
     } catch (e) { /* ignore */ }
 
     // include sender fields per packageType; ensure senderName is sent when sender selected from user list
     try {
       const selSender = (senderList.value && senderList.value[senderIndex.value]) || null
-      if (selSender) {
+      if (senderReadonly && senderReadonly.value && keeperIdFromRoute && keeperIdFromRoute.value) {
+        payload.senderId = keeperIdFromRoute.value
+        payload.senderName = senderName.value || keeperNameFromRoute.value || currentUserName.value
+      } else if (selSender) {
         payload.senderId = selSender.id || selSender.userId || senderId.value || null
         payload.senderName = selSender.name || selSender.username || senderName.value || ''
       } else {
@@ -321,6 +419,18 @@ async function persistParcel(status = 1) {
   let newId = null
   if (data !== null && data !== undefined) { newId = (data.parcelId || data.id || data); if (newId !== undefined && newId !== null) parcel.value.parcelId = newId }
   else if (payload.parcelId) { newId = payload.parcelId; parcel.value.parcelId = newId }
+  // if opened from item detail, update the item to mark sent and link to this parcel
+  if (fromItemFlow.value && fromItemId.value && newId) {
+    try {
+      const updateData = { itemId: Number(fromItemId.value), itemStatus: 2, sendParcelId: newId, sendDate: new Date().toISOString().split('T')[0] }
+      const ur = await ApiHelper.put('/items', updateData)
+      if (ur && ur.code === 1) {
+        uni.showToast({ title: '已创建包裹并更新商品状态', icon: 'success' })
+      } else {
+        console.warn('更新item失败', ur)
+      }
+    } catch (ue) { console.warn('更新item异常', ue) }
+  }
   return newId
 }
 
@@ -424,6 +534,10 @@ function handleNext() {
 onLoad((options) => {
   if (!userStore.userInfo?.id) userStore.checkLoginStatus()
   loadOwners()
+  // apply route-derived defaults
+  if (keeperNameFromRoute && keeperNameFromRoute.value && !senderName.value) senderName.value = keeperNameFromRoute.value
+  if (keeperIdFromRoute && keeperIdFromRoute.value && !senderId.value) senderId.value = keeperIdFromRoute.value
+  if (receiverManual && receiverManual.value && routeQuery && (routeQuery.receiverName || routeQuery.receiver_name)) receiverNameInput.value = routeQuery.receiverName || routeQuery.receiver_name || ''
   if (options && (typeof options.packageType !== 'undefined')) {
     packageType.value = String(options.packageType)
   } else {

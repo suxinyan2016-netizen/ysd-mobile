@@ -62,17 +62,46 @@
       <view class="drawer">
         <view class="drawer-header">
           <text class="drawer-title">商品详情</text>
-          <view class="close" @click="closeDetail">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6 L18 18 M6 18 L18 6" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+          <view class="drawer-actions">
+            <view v-if="showAddParcel" class="action-group">
+              <button class="btn primary header-btn" @click="openTransfer">调拨出库</button>
+              <button class="btn primary header-btn" @click="openUserSale">发售出库</button>
+            </view>
+            <view class="close" @click="closeDetail">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6 L18 18 M6 18 L18 6" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            </view>
           </view>
         </view>
         <view class="drawer-content">
-          <view class="detail-row"><text class="label">ItemNo:</text><text class="value">{{ sel.itemNo || '-' }}</text></view>
-          <view class="detail-row"><text class="label">Seller Part:</text><text class="value">{{ sel.sellerPart || sel.mfrPart || '-' }}</text></view>
-          <view class="detail-row"><text class="label">Qty:</text><text class="value">{{ sel.qty ?? '-' }}</text></view>
-          <view class="detail-row"><text class="label">Keeper:</text><text class="value">{{ sel.keeperName || sel.keeper || '-' }}</text></view>
-          <view class="detail-row"><text class="label">Owner:</text><text class="value">{{ sel.ownerName || sel.owner || '-' }}</text></view>
-          <view class="detail-row"><text class="label">分类:</text><text class="value">{{ sel.dictName || '-' }}</text></view>
+          <view class="detail-row"><text class="label">商品号:</text><text class="value">{{ sel.itemNo || '-' }}</text></view>
+          <view class="detail-row"><text class="label">类别:</text><text class="value">{{ sel.dictName || sel.category || '-' }}</text></view>
+          <view class="detail-row"><text class="label">商品名:</text><text class="value">{{ sel.sellerPart || sel.mfrPart || '-' }}</text></view>
+          <view class="detail-row"><text class="label">是否良品:</text><text :class="['value', sel.isGood==0 ? 'bad' : '']">{{ sel.isGood==1 ? '良品' : (sel.isGood==0 ? '次品' : '-') }}</text></view>
+          <view class="detail-row"><text class="label">数量:</text><text class="value">{{ sel.qty ?? sel.quantity ?? '-' }}</text></view>
+          <view class="detail-row"><text class="label">状态:</text><text class="value">{{ mapItemStatus(sel.itemStatus) }}</text></view>
+          <view class="detail-row"><text class="label">收货运单号:</text><text class="value">{{ sel.receivePackageNo || sel.receive_package_no || '-' }}</text></view>
+          <view class="detail-row"><text class="label">寄出运单号:</text><text class="value">{{ sel.sendPackageNo || sel.send_package_no || '-' }}</text></view>
+          <view class="detail-row"><text class="label">客户反馈:</text><text class="value">{{ sel.customerFeedback || sel.customer_feedback || '-' }}</text></view>
+          <view class="detail-row"><text class="label">检验结果:</text><text class="value">{{ sel.iqcResult || sel.iqc_result || '-' }}</text></view>
+          <view class="detail-row"><text class="label">是否寄售:</text><text class="value">{{ (sel.isConsigned==1||sel.isConsigned==='1') ? '是' : '否' }}</text></view>
+          <view v-if="(sel.isConsigned==1||sel.isConsigned==='1')" class="detail-row"><text class="label">抽成方式:</text><text class="value">{{ commissionModel.value === 1 ? '百分比' : (commissionModel.value === 2 ? '固定' : '-') }}</text></view>
+          <view v-if="(sel.isConsigned==1||sel.isConsigned==='1')" class="detail-row"><text class="label">抽成设定:</text><text class="value num">{{ formatNumber(rawCommissionSet.value ?? sel.commissionSet ?? sel.commission_set ?? commissionSetting.value) }}</text></view>
+          <view v-if="(sel.isConsigned==1||sel.isConsigned==='1')" class="detail-row"><text class="label">上架平台:</text><text class="value">{{ sel.listingPlatform || sel.listing_platform || '-' }}</text></view>
+          <view v-if="(sel.isConsigned==1||sel.isConsigned==='1')" class="detail-row"><text class="label">成交日期:</text><text class="value">{{ sel.dealDate || sel.deal_date || '-' }}</text></view>
+          <view v-if="(sel.isConsigned==1||sel.isConsigned==='1')" class="detail-row"><text class="label">成交价格:</text><text class="value num">{{ formatNumber(rawSalePrice ?? sel.salePrice ?? sel.sale_price ?? dealPrice) }}</text></view>
+          <view class="detail-row"><text class="label">是否拆封:</text><text class="value">{{ sel.isUnpacked==1 ? '是' : '否' }}</text></view>
+          <view class="detail-row"><text class="label">检验费:</text><text class="value num">{{ formatNumber(rawInspectFee ?? sel.inspectFee ?? sel.inspect_fee ?? inspectionFee) }}</text></view>
+          <view class="detail-row"><text class="label">维修费:</text><text class="value num">{{ formatNumber(rawRepairFee ?? sel.repairFee ?? sel.repair_fee ?? repairFee) }}</text></view>
+          <view class="detail-row"><text class="label">保管费:</text><text class="value num">{{ formatNumber(rawKeepFee ?? sel.keepFee ?? sel.keep_fee ?? storageFee) }}</text></view>
+          <view class="detail-row"><text class="label">装箱费:</text><text class="value num">{{ formatNumber(rawPackingFee ?? sel.packingFee ?? sel.packing_fee ?? packingFee) }}</text></view>
+          <view class="detail-row"><text class="label">其他费用:</text><text class="value num">{{ formatNumber(rawOtherFee ?? sel.otherFee ?? sel.other_fee ?? otherFee) }}</text></view>
+          <view v-if="(sel.isConsigned==1||sel.isConsigned==='1')" class="detail-row"><text class="label">抽成费:</text><text class="value num">{{ formatNumber(commissionFee) }}</text></view>
+          <view class="detail-row"><text class="label">总金额:</text><text class="value num">{{ formatNumber(totalAmount) }}</text></view>
+          
+          <view class="detail-row"><text class="label">是否结算:</text><text class="value">{{ sel.isPaid==1 ? '是' : '否' }}</text></view>
+          <view class="detail-row"><text class="label">费用备注:</text><text class="value">{{ sel.feeRemarks || sel.feeRemarks || sel.fee_remark || '-' }}</text></view>
+          <view class="detail-row"><text class="label">付款日期:</text><text class="value">{{ sel.paymentDate || sel.payment_date || sel.paidDate || sel.paid_date || '-' }}</text></view>
+          
         </view>
       </view>
     </view>
@@ -80,6 +109,12 @@
     <!-- More filters drawer -->
     <view v-if="showMore" class="more-overlay" @click.self="closeMore">
       <view class="more-drawer">
+        <view class="drawer-header">
+          <text class="drawer-title">更多筛选</text>
+          <view class="close" @click="closeMore">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6 L18 18 M6 18 L18 6" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+          </view>
+        </view>
         <view class="more-row"><text class="label">商品号</text><input v-model="filter_itemNo" placeholder="请输入商品号" /></view>
         <view class="more-row"><text class="label">商品名</text><input v-model="filter_sellerPart" placeholder="请输入商品名" /></view>
         <view class="more-row" @click="openPicker('dict')"><text class="label">类别</text><text class="picker-value">{{ selectedDictName || '请选择' }}</text></view>
@@ -91,40 +126,40 @@
         <view class="more-row radio-row">
           <text class="label">是否结算</text>
           <view class="radio-group">
-            <label class="radio-item"><radio v-model="filter_isPaid" :value="0" />否</label>
-            <label class="radio-item"><radio v-model="filter_isPaid" :value="1" />是</label>
+            <view :class="['radio-item', filter_isPaid === 0 ? 'active' : '']" @click="filter_isPaid = 0">否</view>
+            <view :class="['radio-item', filter_isPaid === 1 ? 'active' : '']" @click="filter_isPaid = 1">是</view>
           </view>
         </view>
 
         <view class="more-row radio-row">
           <text class="label">是否良品</text>
           <view class="radio-group">
-            <label class="radio-item"><radio v-model="filter_isGood" :value="0" />次品</label>
-            <label class="radio-item"><radio v-model="filter_isGood" :value="1" />良品</label>
+            <view :class="['radio-item', filter_isGood === 0 ? 'active' : '']" @click="filter_isGood = 0">次品</view>
+            <view :class="['radio-item', filter_isGood === 1 ? 'active' : '']" @click="filter_isGood = 1">良品</view>
           </view>
         </view>
 
         <view class="more-row radio-row">
           <text class="label">是否寄售</text>
           <view class="radio-group">
-            <label class="radio-item"><radio v-model="filter_isConsigned" :value="0" />否</label>
-            <label class="radio-item"><radio v-model="filter_isConsigned" :value="1" />是</label>
+            <view :class="['radio-item', filter_isConsigned === 0 ? 'active' : '']" @click="filter_isConsigned = 0">否</view>
+            <view :class="['radio-item', filter_isConsigned === 1 ? 'active' : '']" @click="filter_isConsigned = 1">是</view>
           </view>
         </view>
 
         <view class="more-row radio-row">
           <text class="label">需要测试</text>
           <view class="radio-group">
-            <label class="radio-item"><radio v-model="filter_needTest" :value="0" />否</label>
-            <label class="radio-item"><radio v-model="filter_needTest" :value="1" />是</label>
+            <view :class="['radio-item', filter_needTest === 0 ? 'active' : '']" @click="filter_needTest = 0">否</view>
+            <view :class="['radio-item', filter_needTest === 1 ? 'active' : '']" @click="filter_needTest = 1">是</view>
           </view>
         </view>
 
         <view class="more-row radio-row">
           <text class="label">需要维修</text>
           <view class="radio-group">
-            <label class="radio-item"><radio v-model="filter_needRepair" :value="0" />否</label>
-            <label class="radio-item"><radio v-model="filter_needRepair" :value="1" />是</label>
+            <view :class="['radio-item', filter_needRepair === 0 ? 'active' : '']" @click="filter_needRepair = 0">否</view>
+            <view :class="['radio-item', filter_needRepair === 1 ? 'active' : '']" @click="filter_needRepair = 1">是</view>
           </view>
         </view>
         <view class="more-actions">
@@ -163,8 +198,109 @@ const rows = ref([])
 const loading = ref(false)
 const showDetail = ref(false)
 const sel = ref({})
+// raw numeric refs populated when loading detail to avoid mapping issues
+const rawInspectFee = ref(null)
+const rawRepairFee = ref(null)
+const rawKeepFee = ref(null)
+const rawPackingFee = ref(null)
+const rawOtherFee = ref(null)
+const rawSalePrice = ref(null)
+const rawCommissionSet = ref(null)
+const rawIsConsigned = ref(null)
+const rawCommissionModel = ref(null)
 
-const totalPages = computed(() => Math.max(1, Math.ceil((total.value||0) / pageSize.value)))
+  // helper: safely parse numeric fields
+  function toNum(v){
+    if (v === null || typeof v === 'undefined' || v === '') return 0
+    const n = parseFloat(v)
+    return isNaN(n) ? 0 : n
+  }
+
+  function formatNumber(v){
+    const n = toNum(v)
+    return n.toFixed(2)
+  }
+
+  // compute fee components (support multiple possible backend keys)
+  function pick(...keys){
+    for (const k of keys){
+      if (sel.value && typeof sel.value[k] !== 'undefined' && sel.value[k] !== null) return sel.value[k]
+    }
+    return null
+  }
+
+  const inspectionFee = computed(() => toNum(rawInspectFee.value != null ? rawInspectFee.value : pick('inspectFee','inspectionFee','inspection_fee','iqcFee','iqc_fee','inspection')))
+  const repairFee = computed(() => toNum(rawRepairFee.value != null ? rawRepairFee.value : pick('repairFee','repair_fee','maintenanceFee','maintenance_fee','repair')))
+  const storageFee = computed(() => toNum(rawKeepFee.value != null ? rawKeepFee.value : pick('keepFee','keep_fee','storageFee','storage_fee','keeperFee','keeper_fee','storage')))
+  const packingFee = computed(() => toNum(rawPackingFee.value != null ? rawPackingFee.value : pick('packingFee','packing_fee','boxFee','box_fee','packing')))
+  const otherFee = computed(() => toNum(rawOtherFee.value != null ? rawOtherFee.value : pick('otherFee','other_fee','miscFee','misc_fee','other')))
+
+  const commissionModel = computed(() => Number(rawCommissionModel.value != null ? rawCommissionModel.value : (pick('commissionModel','commission_model','commissionmodel','commission_model') || 0)))
+  const commissionSetting = computed(() => toNum(rawCommissionSet.value != null ? rawCommissionSet.value : pick('commissionSet','commissionSet','commission_setting','commissionSetting','commissionRate','commission_rate','commission') ))
+  const dealPrice = computed(() => toNum(rawSalePrice.value != null ? rawSalePrice.value : pick('salePrice','sale_price','dealPrice','deal_price','成交价格')))
+
+  const sumFees = computed(() => inspectionFee.value + repairFee.value + storageFee.value + packingFee.value + otherFee.value)
+
+  const commissionFee = computed(() => {
+    const isConsigned = Number(rawIsConsigned.value != null ? rawIsConsigned.value : (typeof sel.value.isConsigned !== 'undefined' && sel.value.isConsigned !== null ? sel.value.isConsigned : (pick('isConsigned','is_consigned','isConsign','is_consign') || 0)))
+    if (isConsigned !== 1) return 0
+    if (commissionModel.value === 1) {
+      // percentage model
+      const base = dealPrice.value - sumFees.value
+      const amt = base > 0 ? (base * commissionSetting.value / 100) : 0
+      return Math.max(0, Number(amt.toFixed(2)))
+    }
+    if (commissionModel.value === 2) {
+      // fixed amount
+      return Math.max(0, Number(commissionSetting.value.toFixed(2)))
+    }
+    return 0
+  })
+
+  const totalAmount = computed(() => {
+    const isConsigned = Number(rawIsConsigned.value != null ? rawIsConsigned.value : (typeof sel.value.isConsigned !== 'undefined' && sel.value.isConsigned !== null ? sel.value.isConsigned : (pick('isConsigned','is_consigned','isConsign','is_consign') || 0)))
+    if (isConsigned !== 1) {
+      return Number(sumFees.value.toFixed(2))
+    }
+    // consigned
+    const net = dealPrice.value - sumFees.value
+    const total = net - commissionFee.value
+    return Number(total.toFixed(2))
+  })
+
+  const totalPages = computed(() => Math.max(1, Math.ceil((total.value||0) / pageSize.value)))
+
+  // show '加入包裹' when current user is the owner and item is in status 1 (已入库)
+  const showAddParcel = computed(() => {
+    try{
+      const uid = getCurrentUserId()
+      if (!uid) return false
+      const ownerId = sel.value ? Number(sel.value.ownerId || sel.value.ownerId) : null
+      const status = sel.value ? Number(sel.value.itemStatus || sel.value.itemStatus) : null
+      return ownerId === uid && status === 1
+    }catch(e){ return false }
+  })
+
+  function addToParcel(){
+    if (!sel.value || !sel.value.itemId) { uni.showToast({ title: '无可加入的商品', icon: 'none' }); return }
+    try{ uni.navigateTo({ url: `/pages/parcel-add/create?itemId=${sel.value.itemId}` }) }catch(e){ uni.showToast({ title:'跳转失败', icon:'none' }) }
+  }
+
+  function openTransfer(){
+    if (!sel.value || !sel.value.itemId) { uni.showToast({ title: '无可加入的商品', icon: 'none' }); return }
+    const keeperName = sel.value.keeper || sel.value.keeperName || ''
+    const keeperId = sel.value.keeperId || sel.value.keeperId || ''
+    const url = `/pages/parcel-add/create?mode=transfer&packageType=2&senderReadonly=1&fromItemId=${sel.value.itemId}&keeperId=${keeperId}&keeperName=${encodeURIComponent(keeperName)}`
+    try{ uni.navigateTo({ url }) } catch(e){ uni.showToast({ title:'跳转失败', icon:'none' }) }
+  }
+
+  function openUserSale(){
+    if (!sel.value || !sel.value.itemId) { uni.showToast({ title: '无可发售的商品', icon: 'none' }); return }
+    const keeperName = sel.value.keeper || sel.value.keeperName || ''
+    const keeperId = sel.value.keeperId || sel.value.keeperId || ''
+    const url = `/pages/parcel-add/create?mode=sale&packageType=3&senderReadonly=1&receiverManual=1&hideDemands=1&fromItemId=${sel.value.itemId}&keeperId=${keeperId}&keeperName=${encodeURIComponent(keeperName)}`
+    try{ uni.navigateTo({ url }) } catch(e){ uni.showToast({ title:'跳转失败', icon:'none' }) }
+  }
 
 function goBack(){ smartBack() }
 
@@ -199,7 +335,7 @@ const filter_ownerId = ref(null)
 const selectedOwnerName = ref('')
 const filter_keeperId = ref(null)
 const selectedKeeperName = ref('')
-const filter_itemStatus = ref(null)
+const filter_itemStatus = ref(1)
 const filter_isPaid = ref(null)
 const filter_isGood = ref(null)
 const filter_isConsigned = ref(null)
@@ -330,7 +466,7 @@ function onPickerSelect(idx){
 }
 
 // labels for selected picks
-const selectedStatusLabel = ref('')
+const selectedStatusLabel = ref(statusLabels[1] || '已入库')
 const selectedIsPaidLabel = ref('')
 const selectedIsGoodLabel = ref('')
 const selectedIsConsignedLabel = ref('')
@@ -372,8 +508,27 @@ async function openDetail(row){
   showDetail.value = true
   try{
     const res = await ApiHelper.get(`/items/${row.itemId}`)
-    if (res && res.code === 1) sel.value = res.data || row
-    else sel.value = row
+    if (res && res.code === 1) {
+      let payload = res.data
+      // normalize common wrappers
+      if (payload && payload.item) payload = payload.item
+      if (payload && Array.isArray(payload.rows) && payload.rows.length === 1) payload = payload.rows[0]
+      // ensure we set a plain object for reactivity
+      sel.value = (payload && typeof payload === 'object') ? { ...payload } : (row || {})
+      // populate raw numeric refs directly from payload to avoid pick mismatches
+      rawInspectFee.value = typeof payload.inspectFee !== 'undefined' ? payload.inspectFee : (typeof payload.inspect_fee !== 'undefined' ? payload.inspect_fee : null)
+      rawRepairFee.value = typeof payload.repairFee !== 'undefined' ? payload.repairFee : (typeof payload.repair_fee !== 'undefined' ? payload.repair_fee : null)
+      rawKeepFee.value = typeof payload.keepFee !== 'undefined' ? payload.keepFee : (typeof payload.keep_fee !== 'undefined' ? payload.keep_fee : null)
+      rawPackingFee.value = typeof payload.packingFee !== 'undefined' ? payload.packingFee : (typeof payload.packing_fee !== 'undefined' ? payload.packing_fee : null)
+      rawOtherFee.value = typeof payload.otherFee !== 'undefined' ? payload.otherFee : (typeof payload.other_fee !== 'undefined' ? payload.other_fee : null)
+      rawSalePrice.value = typeof payload.salePrice !== 'undefined' ? payload.salePrice : (typeof payload.sale_price !== 'undefined' ? payload.sale_price : null)
+      rawCommissionSet.value = typeof payload.commissionSet !== 'undefined' ? payload.commissionSet : (typeof payload.commission_set !== 'undefined' ? payload.commission_set : null)
+      rawIsConsigned.value = typeof payload.isConsigned !== 'undefined' ? payload.isConsigned : (typeof payload.is_consigned !== 'undefined' ? payload.is_consigned : null)
+      rawCommissionModel.value = typeof payload.commissionModel !== 'undefined' ? payload.commissionModel : (typeof payload.commission_model !== 'undefined' ? payload.commission_model : null)
+      // debug logs removed
+    } else {
+      sel.value = row || {}
+    }
   }catch(e){ console.error('openDetail error', e); sel.value = row; uni.showToast({ title:'无法加载详情', icon:'none' }) }
 }
 
@@ -423,12 +578,23 @@ onShow(() => { page.value = 1; doSearch() })
 .drawer-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12rpx }
 .drawer-title{ font-size:28rpx; font-weight:600 }
 .drawer-content{ max-height:60vh; overflow:auto }
+.drawer-header .close{ width:52rpx; height:52rpx; display:flex; align-items:center; justify-content:center; border-radius:50%; background:#f5f5f5; cursor:pointer }
+.drawer-header .close svg{ width:26rpx; height:26rpx }
+.drawer-actions{ display:flex; align-items:center; gap:24rpx }
+.header-btn{ padding:8rpx 14rpx; height:56rpx; min-width:120rpx; display:flex; align-items:center; justify-content:center; background: linear-gradient(90deg,#409EFF,#66B1FF); color:#fff; border:none; border-radius:8rpx; box-shadow: 0 6rpx 18rpx rgba(64,158,255,0.12); font-size:22rpx }
+.action-group{ display:flex; gap:12rpx; align-items:center }
 .detail-row{ display:flex; gap:12rpx; padding:12rpx 0; border-bottom:1rpx solid #f0f0f0 }
 .detail-row .label{ width:160rpx; color:#666 }
 .detail-row .value{ flex:1; color:#333 }
+.detail-row .value.bad{ color:#FF4D4F }
+.detail-row .value.num{ text-align:right }
 
 .more-overlay{ position:fixed; left:0; right:0; top:0; bottom:0; background:rgba(0,0,0,0.35); display:flex; align-items:flex-end; justify-content:center; z-index:2000 }
-.more-drawer{ width:100%; background:#fff; border-top-left-radius:16rpx; border-top-right-radius:16rpx; padding:20rpx }
+  .more-drawer{ width:100%; background:#fff; border-top-left-radius:16rpx; border-top-right-radius:16rpx; padding:20rpx }
+  .more-drawer .drawer-header{ display:flex; justify-content:space-between; align-items:center; padding-bottom:12rpx }
+  .more-drawer .drawer-title{ font-size:26rpx; font-weight:700 }
+  .more-drawer .close{ width:44rpx; height:44rpx; display:flex; align-items:center; justify-content:center; border-radius:50%; background:#f5f5f5; cursor:pointer }
+  .more-drawer .close svg{ width:22rpx; height:22rpx }
 .more-row{ display:flex; align-items:center; justify-content:space-between; padding:12rpx 0; border-bottom:1rpx solid #f6f6f6 }
 .more-row .label{ color:#666 }
 .more-row input{ font-size:22rpx }
@@ -440,6 +606,7 @@ onShow(() => { page.value = 1; doSearch() })
 .btn.primary{ background: linear-gradient(90deg,#409EFF,#66B1FF); color:#fff }
 
 .radio-group{ display:flex; gap:36rpx; align-items:center }
-.radio-item{ display:flex; align-items:center; gap:12rpx; color:#333; font-size:24rpx; padding:8rpx 12rpx; min-width:120rpx; border-radius:10rpx }
+.radio-item{ display:flex; align-items:center; gap:12rpx; color:#333; font-size:20rpx; padding:8rpx 12rpx; min-width:120rpx; border-radius:10rpx; border:1rpx solid #ececec; cursor:pointer; background:#fff }
 .radio-item radio{ width:44rpx; height:44rpx }
+.radio-item.active{ background:#409EFF; color:#fff; border-color:#409EFF }
 </style>

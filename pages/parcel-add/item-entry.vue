@@ -109,6 +109,7 @@ try {
   }
 }
 import { ApiHelper } from '@/utils/apiHelper'
+import { uploadFile, reassignAttachments } from '@/utils/uploadHelper'
 import { useUserStore } from '@/stores/user'
 import { smartBack } from '@/utils/navigation'
 const userStore = useUserStore()
@@ -163,7 +164,14 @@ async function chooseImage() { if (!item.value.tempKey) item.value.tempKey = 'tk
 
 async function removeImage(index) { const img = itemImages.value[index]; if (img.id && img.uploaded) { try { await ApiHelper.deleteImage(img.id) } catch(e) { console.warn(e) } } itemImages.value.splice(index,1) }
 
-async function uploadImage(filePath, recordId) { return new Promise((resolve, reject) => { const uploadUrl = ApiHelper.baseUrl + '/image/manage/upload'; const username = userStore.userInfo?.name || (function(){ try { const s = uni.getStorageSync('loginUser'); return s? JSON.parse(s).name:null } catch(e){return null} })(); const headers = ApiHelper.getAuthHeaders(username ? { username } : {}); uni.uploadFile({ url: uploadUrl, filePath, name: 'file', header: headers, formData: { moduleType: 'ITEM', recordId: recordId, imageType: 'ITEM_IMAGE' }, success: (res) => { try { const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data; if (data && data.code === 1) resolve(data.data); else reject(new Error(data?.msg || '上传失败')) } catch(err){ reject(err) } }, fail: (err) => reject(err) }) }) }
+async function uploadImage(filePath, recordId, tempKey) {
+  try {
+    const data = await uploadFile(filePath, 'ITEM', (typeof recordId !== 'undefined' && recordId !== null) ? recordId : -1, 'ITEM_IMAGE', tempKey)
+    return data
+  } catch (err) {
+    throw err
+  }
+}
 
 async function handleSave() {
   if (isSaving.value) return
@@ -211,18 +219,31 @@ async function handleSave() {
     let recordIdForUpload = null
     if (itemId) { item.value.itemId = Number(itemId); recordIdForUpload = Number(itemId) }
 
-    if (recordIdForUpload) {
-      for (const img of itemImages.value) {
-        if (!img.uploaded && img.imageUrl) {
-          const u = await uploadImage(img.imageUrl, recordIdForUpload)
+    // upload images: prefer numeric recordId but always include tempKey so backend can associate
+    const uploadRecordId = recordIdForUpload || -1
+    for (const img of itemImages.value) {
+      if (!img.uploaded && img.imageUrl) {
+        try {
+          const u = await uploadImage(img.imageUrl, uploadRecordId, item.value.tempKey)
           img.id = u.id
           const host = ApiHelper.getHost()
           img.imageUrl = u.imageUrl && u.imageUrl.startsWith('http') ? u.imageUrl : (host + (u.imageUrl || ''))
           img.thumbnailUrl = u.thumbnailUrl && u.thumbnailUrl.startsWith('http') ? u.thumbnailUrl : (host + (u.thumbnailUrl || u.imageUrl || ''))
           img.uploaded = true
+        } catch (upErr) {
+          console.warn('图片上传失败', upErr)
         }
       }
-    } else { console.warn('No numeric itemId available; skipping image upload') }
+    }
+
+    // best-effort: attempt to reassign attachments from tempKey to created itemId
+    if (itemId && item.value.tempKey) {
+      try {
+        await reassignAttachments('ITEM', item.value.tempKey, itemId)
+      } catch (bindErr) {
+        console.warn('reassign attachments by tempKey failed (non-fatal)', bindErr)
+      }
+    }
 
     uni.hideLoading()
     uni.showToast({ title: '保存成功', icon: 'success' })

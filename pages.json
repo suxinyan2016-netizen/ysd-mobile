@@ -107,6 +107,38 @@
         "navigationStyle": "custom"
       }
     }
+    ,
+    {
+      "path": "pages/account/index",
+      "style": {
+        "navigationBarTitleText": "账户",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/account/overview",
+      "style": {
+        "navigationBarTitleText": "账户概览",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/account/receivables",
+      "style": {
+        "navigationBarTitleText": "我的应收",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/account/payables",
+      "style": {
+        "navigationBarTitleText": "我的应付",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",

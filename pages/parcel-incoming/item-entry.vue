@@ -126,6 +126,7 @@ try {
   }
 }
 import { ApiHelper } from '@/utils/apiHelper'
+import { uploadFile, reassignAttachments } from '@/utils/uploadHelper'
 import { useUserStore } from '@/stores/user'
 import { smartBack } from '@/utils/navigation'
 const userStore = useUserStore()
@@ -221,16 +222,14 @@ async function removeImage(index) {
   itemImages.value.splice(index,1)
 }
 
-async function uploadImage(filePath, recordId) {
-  return new Promise((resolve, reject) => {
-    const uploadUrl = ApiHelper.baseUrl + '/image/manage/upload'
-    // include username header required by backend
-    const username = userStore.userInfo?.name || (function(){ try { const s = uni.getStorageSync('loginUser'); return s? JSON.parse(s).name:null } catch(e){return null} })()
-    const headers = ApiHelper.getAuthHeaders(username ? { username } : {})
-    uni.uploadFile({ url: uploadUrl, filePath, name: 'file', header: headers, formData: { moduleType: 'ITEM', recordId: recordId, imageType: 'ITEM_IMAGE' }, success: (res) => {
-      try { const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data; if (data && data.code === 1) resolve(data.data); else reject(new Error(data?.msg || '上传失败')) } catch(err){ reject(err) }
-    }, fail: (err) => reject(err) })
-  })
+async function uploadImage(filePath, recordId, tempKey) {
+  // wrapper around shared upload helper — always try to include tempKey when available
+  try {
+    const data = await uploadFile(filePath, 'ITEM', (typeof recordId !== 'undefined' && recordId !== null) ? recordId : -1, 'ITEM_IMAGE', tempKey)
+    return data
+  } catch (err) {
+    throw err
+  }
 }
 
 async function handleSave() {
@@ -260,7 +259,7 @@ async function handleSave() {
       // new fields required: receivedDate (current date), keeperId (current user id), ownerId (from first page), ispaid, isconsigned
       receivedDate: new Date().toISOString().split('T')[0],
       keeperId: userStore.userInfo?.id || (function(){ try { const s = uni.getStorageSync('loginUser'); return s? JSON.parse(s).id:null } catch(e){return null} })(),
-      ownerId: ownerIdFromRoute ? Number(ownerIdFromRoute) : (item.value.ownerId || null),
+      ownerId: ownerIdFromRoute && ownerIdFromRoute.value ? Number(ownerIdFromRoute.value) : (item.value.ownerId || null),
       ispaid: 0,
       isconsigned: 0
     }
@@ -303,21 +302,31 @@ async function handleSave() {
       recordIdForUpload = Number(itemId)
     }
 
-    // upload images only when we have a numeric recordId
-    if (recordIdForUpload) {
-      for (const img of itemImages.value) {
-        if (!img.uploaded && img.imageUrl) {
-          const u = await uploadImage(img.imageUrl, recordIdForUpload)
+    // upload images: prefer numeric recordId but always include tempKey so backend can associate
+    const uploadRecordId = recordIdForUpload || -1
+    for (const img of itemImages.value) {
+      if (!img.uploaded && img.imageUrl) {
+        try {
+          const u = await uploadImage(img.imageUrl, uploadRecordId, item.value.tempKey)
           img.id = u.id
           const host = ApiHelper.getHost()
           img.imageUrl = u.imageUrl && u.imageUrl.startsWith('http') ? u.imageUrl : (host + (u.imageUrl || ''))
           img.thumbnailUrl = u.thumbnailUrl && u.thumbnailUrl.startsWith('http') ? u.thumbnailUrl : (host + (u.thumbnailUrl || u.imageUrl || ''))
           img.uploaded = true
+        } catch (upErr) {
+          console.warn('图片上传失败', upErr)
         }
       }
-    } else {
-      // backend requires numeric recordId for image upload; inform user to save again or refresh
-      console.warn('No numeric itemId available; skipping image upload')
+    }
+
+    // best-effort: if we uploaded with a tempKey (or previously stored attachments exist under tempKey),
+    // ask backend to reassign attachments to the created itemId so they are correctly bound.
+    if (itemId && item.value.tempKey) {
+      try {
+        await reassignAttachments('ITEM', item.value.tempKey, itemId)
+      } catch (bindErr) {
+        console.warn('reassign attachments by tempKey failed (non-fatal)', bindErr)
+      }
     }
 
     uni.hideLoading()
@@ -395,7 +404,10 @@ onMounted(() => {
       if (opts.packageNo) {
         try { packageNo.value = decodeURIComponent(opts.packageNo) } catch(e) { packageNo.value = opts.packageNo }
       }
-      if (opts.ownerId) ownerIdFromRoute.value = opts.ownerId
+          if (opts.ownerId) {
+            ownerIdFromRoute.value = opts.ownerId
+            try { item.value.ownerId = Number(opts.ownerId) } catch(e) { item.value.ownerId = opts.ownerId }
+          }
       // ensure item model reflects the parcel association
       item.value.receiveParcelId = parcelId.value || item.value.receiveParcelId
       item.value.receivePackageNo = packageNo.value || item.value.receivePackageNo
@@ -413,7 +425,10 @@ onMounted(() => {
           if (data.packageNo) {
             try { packageNo.value = decodeURIComponent(data.packageNo) } catch(e) { packageNo.value = data.packageNo }
           }
-          if (data.ownerId) ownerIdFromRoute.value = data.ownerId
+          if (data.ownerId) {
+            ownerIdFromRoute.value = data.ownerId
+            try { item.value.ownerId = Number(data.ownerId) } catch(e) { item.value.ownerId = data.ownerId }
+          }
           item.value.receiveParcelId = parcelId.value || item.value.receiveParcelId
           item.value.receivePackageNo = packageNo.value || item.value.receivePackageNo
           // clear stored transfer to avoid reusing stale data

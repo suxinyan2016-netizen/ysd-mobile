@@ -1,5 +1,5 @@
 <template>
-  <view class="page-container">
+  <view class="page-container parcel-home">
     <view class="topbar">
       <view class="back" @click="goBack">
         <view class="back-icon">
@@ -60,8 +60,6 @@ function openWarehouse(){
 .page-container{ height:100vh; display:flex; flex-direction:column; background:#f8f8f8; padding-top:88rpx }
 .topbar{ height:88rpx; background:#082567; color:#fff; display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; right:0; z-index:999 }
 .topbar .title{ color:#fff; font-size:34rpx; font-weight:700 }
-.icons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 240rpx 40rpx; width: 100%; padding: 0 20rpx; box-sizing: border-box; align-items: center; margin-top:120rpx }
-.icon-card{ background:#fff; border-radius:12rpx; padding:20rpx 0; display:flex; flex-direction:column; align-items:center; justify-content:center }
-.icon{ font-size:48rpx }
-.label{ margin-top:8rpx; color:#666; font-size:28rpx }
+  /* Use shared `.parcel-home` styles defined in uni.scss for icon-card, icon and label */
+  .content { flex:1; display:flex; align-items:flex-start; justify-content:center; padding-top:72rpx }
 </style>
