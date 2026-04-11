@@ -379,6 +379,9 @@ function resetMore(){
 function applyMore(){
   showMore.value = false
   page.value = 1
+  // copy more-drawer filters into the main search inputs so params are included
+  itemNo.value = filter_itemNo.value || ''
+  sellerPart.value = filter_sellerPart.value || ''
   doSearch()
 }
 
@@ -486,6 +489,8 @@ async function doSearch(){
     if (props.otherPicker === 'keeper' && filter_keeperId.value) params.keeperId = filter_keeperId.value
     if (props.otherPicker === 'owner' && filter_ownerId.value) params.ownerId = filter_ownerId.value
     if (filter_dictId.value) params.dictId = filter_dictId.value
+    if (filter_receivePackageNo.value) params.receivePackageNo = filter_receivePackageNo.value
+    if (filter_sendPackageNo.value) params.sendPackageNo = filter_sendPackageNo.value
     if (filter_itemStatus.value !== null) params.itemStatus = filter_itemStatus.value
     if (filter_isPaid.value !== null) params.isPaid = filter_isPaid.value
     if (filter_isGood.value !== null) params.isGood = filter_isGood.value
