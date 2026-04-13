@@ -79,9 +79,10 @@
       </view>
 
       <view class="action-btns">
-        <button class="btn btn-default" @click="goBack">上一步</button>
+        <button v-if="showStepButtons" class="btn btn-default" @click="goBack">上一步</button>
         <button class="btn btn-save" :disabled="isSaving" @click="handleSave">保存</button>
-        <button class="btn btn-primary" :disabled="isSaving" @click="handleNext">下一步</button>
+        <button v-if="!showStepButtons" class="btn btn-warning" :disabled="isSaving" @click="handleSubmitFromService">提交</button>
+        <button v-if="showStepButtons" class="btn btn-primary" :disabled="isSaving" @click="handleNext">下一步</button>
       </view>
       <!-- reusable modal component -->
       <ModalPicker v-if="showModal" :show="showModal" :title="modalTitle" :list="modalList" @select="selectModal" @close="closeModal" />
@@ -118,10 +119,11 @@ const parcelId = ref((route && route.query && route.query.parcelId) || (route &&
 const packageNo = ref((route && route.query && route.query.packageNo) || (route && route.params && route.params.packageNo) || '')
 const ownerIdFromRoute = ref((route && route.query && route.query.ownerId) || (route && route.params && route.params.ownerId) || null)
 
-const item = ref({ itemNo: '', sellerPart: '', tempKey: '', receiveParcelId: parcelId.value || null, receivePackageNo: packageNo.value || '', dictId: null, qty: 1, isUnpacked: 0, isGood: 1, iqcResult: '' })
+const item = ref({ itemNo: '', sellerPart: '', tempKey: '', receiveParcelId: parcelId.value || null, receivePackageNo: packageNo.value || '', dictId: null, qty: 1, isUnpacked: 0, isGood: 1, iqcResult: '', testDemands: '', testProcedure: '', testResult: '', repairDemands: '', repairProcedure: '', repairResult: '' })
 const itemImages = ref([])
 const isSaving = ref(false)
 const dictOptions = ref([])
+const showStepButtons = ref(true)
 
 const canAddMore = computed(() => itemImages.value.length < 6)
 const dictIndex = ref(0)
@@ -157,16 +159,30 @@ function goBack() { smartBack() }
 
 function previewImageFull(imageUrl) { if (!imageUrl) return; const host = ApiHelper.getHost(); const fullUrl = imageUrl.startsWith('http') ? imageUrl : (host + imageUrl); uni.previewImage({ urls: [fullUrl], current: fullUrl }) }
 
-async function loadDicts() { try { const res = await ApiHelper.get('/dicts'); if (res && res.code === 1 && Array.isArray(res.data)) { dictOptions.value = res.data.filter(d => String(d.dictGroup) === '2' && (d.isValid === 1 || d.isValid === '1')) } } catch (err) { console.warn('loadDicts failed', err) } }
+async function loadDicts() {
+  try {
+    const res = await ApiHelper.get('/dicts')
+    if (res && res.code === 1 && Array.isArray(res.data)) {
+      dictOptions.value = res.data.filter(d => String(d.dictGroup) === '2' && (d.isValid === 1 || d.isValid === '1'))
+      // if an item dictId is already present, set dictIndex so selectedDictName shows
+      if (item.value && item.value.dictId) {
+        const idx = dictOptions.value.findIndex(d => (d.dictId == item.value.dictId) || (d.id == item.value.dictId))
+        if (idx >= 0) dictIndex.value = idx
+      }
+    }
+  } catch (err) {
+    console.warn('loadDicts failed', err)
+  }
+}
 
 const recordedItemIds = ref([])
 async function chooseImage() { if (!item.value.tempKey) item.value.tempKey = 'tk_' + Date.now() + '_' + Math.floor(Math.random() * 1000000); uni.chooseImage({ count: 6 - itemImages.value.length, sizeType: ['compressed'], sourceType: ['camera','album'], success: async (res) => { for (const fp of res.tempFilePaths) { itemImages.value.push({ imageUrl: fp, thumbnailUrl: fp, uploaded: false, uploading: false }) } }}) }
 
 async function removeImage(index) { const img = itemImages.value[index]; if (img.id && img.uploaded) { try { await ApiHelper.deleteImage(img.id) } catch(e) { console.warn(e) } } itemImages.value.splice(index,1) }
 
-async function uploadImage(filePath, recordId, tempKey) {
+async function uploadImage(filePath, recordId, tempKey, imageType = 'ITEM_IMAGE') {
   try {
-    const data = await uploadFile(filePath, 'ITEM', (typeof recordId !== 'undefined' && recordId !== null) ? recordId : -1, 'ITEM_IMAGE', tempKey)
+    const data = await uploadFile(filePath, 'ITEM', (typeof recordId !== 'undefined' && recordId !== null) ? recordId : -1, imageType, tempKey)
     return data
   } catch (err) {
     throw err
@@ -200,9 +216,23 @@ async function handleSave() {
     }
 
     let itemId = item.value.itemId || null
+    const fromService = (showStepButtons.value === false)
     let res
-    if (itemId) { res = await ApiHelper.put('/items', { ...payload, itemId }) }
-    else { res = await ApiHelper.post('/items', payload) }
+    // prefer update when editing from service or when itemId exists
+    if (itemId || fromService) {
+      // if no numeric id but fromService, try tempKey lookup
+      if (!itemId && item.value.tempKey) {
+        try {
+          const q = await ApiHelper.get('/items', { tempKey: item.value.tempKey, receiveParcelId: item.value.receiveParcelId, createBy: userStore.userInfo?.name || userStore.userInfo?.id, pageSize: 1 })
+          if (q && q.code === 1 && q.data && Array.isArray(q.data.rows) && q.data.rows.length) {
+            const found = q.data.rows[0]
+            itemId = found.itemId || found.id || null
+          }
+        } catch (err) { console.warn('query by tempKey failed', err) }
+      }
+      if (itemId) { res = await ApiHelper.put('/items', { ...payload, itemId }) }
+    }
+    if (!res) { res = await ApiHelper.post('/items', payload) }
     if (!(res && res.code === 1)) throw new Error(res?.msg || '保存item失败')
 
     if (!itemId) {
@@ -251,6 +281,58 @@ async function handleSave() {
   } catch(e) { console.error('保存item失败', e); uni.hideLoading(); uni.showToast({ title: '保存失败: ' + (e?.message || ''), icon: 'none' }); return null } finally { isSaving.value = false }
 }
 
+// when opened from ItemService, provide a submit action that saves then sets itemStatus=1
+async function handleSubmitFromService() {
+  if (isSaving.value) return
+  isSaving.value = true
+  uni.showLoading({ title: '提交中...' })
+  try {
+    let itemId = await handleSave()
+    // if save returned null but item already has an id (editing existing), continue
+    if (!itemId) itemId = item.value.itemId || null
+    if (!itemId) throw new Error('无法获取 itemId，保存失败')
+    // depending on mode, set flags
+    const mode = (route && route.query && route.query.mode) || (route && route.params && route.params.mode) || ''
+    let res
+    if (mode === 'test') {
+      res = await ApiHelper.put('/items', { itemId: itemId, isTested: 1 })
+    } else if (mode === 'repair') {
+      res = await ApiHelper.put('/items', { itemId: itemId, isRepaired: 1 })
+    } else {
+      res = await ApiHelper.put('/items', { itemId: itemId, itemStatus: 1 })
+    }
+    if (!(res && res.code === 1)) throw new Error(res?.msg || '设置状态失败')
+    uni.hideLoading()
+    uni.showToast({ title: '提交成功', icon: 'success' })
+    // set refresh flag so service list knows to reload
+    try { uni.setStorageSync && uni.setStorageSync('itemServiceRefresh', Date.now()) } catch(e){}
+    // try to call previous page's load() directly (H5 navigateBack may not trigger focus)
+    try{
+      if (typeof getCurrentPages === 'function'){
+        const pages = getCurrentPages() || []
+        const prev = pages[pages.length-2]
+        if (prev) {
+          // Vue page instance on H5 is available as $vm
+          const vm = prev.$vm || prev.page || null
+          if (vm) {
+            try{
+              if (vm.$refs && vm.$refs.svc && typeof vm.$refs.svc.load === 'function') vm.$refs.svc.load()
+              else if (typeof vm.load === 'function') vm.load()
+            }catch(e){ console.warn('call prev.load failed', e) }
+          }
+        }
+      }
+    }catch(e){ console.warn('notify previous page failed', e) }
+
+    // navigate back to list
+    setTimeout(() => { try { uni.navigateBack() } catch(e) { console.warn('navigateBack failed', e) } }, 600)
+  } catch (e) {
+    console.error('handleSubmitFromService failed', e)
+    uni.hideLoading()
+    uni.showToast({ title: '提交失败: ' + (e?.message || ''), icon: 'none' })
+  } finally { isSaving.value = false }
+}
+
 function handleNext() {
   item.value.itemNo = ''
   item.value.sellerPart = ''
@@ -281,7 +363,7 @@ async function handleSubmit() {
   } catch(e) { console.error('提交失败', e); uni.hideLoading(); uni.showToast({ title: '提交失败: ' + (e?.message || ''), icon: 'none' }) } finally { isSaving.value = false }
 }
 
-onMounted(() => {
+onMounted(async () => {
   loadDicts()
   try {
     if (typeof getCurrentPages === 'function') {
@@ -293,6 +375,13 @@ onMounted(() => {
       if (opts.ownerId) ownerIdFromRoute.value = opts.ownerId
       item.value.receiveParcelId = parcelId.value || item.value.receiveParcelId
       item.value.receivePackageNo = packageNo.value || item.value.receivePackageNo
+        // hide step buttons when navigated from ItemService (fromService=1)
+        if (opts.fromService === '1' || opts.fromService === 'true' || opts.fromService === 1) {
+          showStepButtons.value = false
+        }
+      if (opts.itemId) {
+        try { await loadExistingItem(opts.itemId) } catch(e) { console.warn('loadExistingItem failed in onMounted', e) }
+      }
     }
   } catch (e) { console.warn('populate route params failed', e) }
   try {
@@ -313,6 +402,44 @@ onMounted(() => {
   } catch(e) { console.warn('storage fallback for parcelTransfer failed', e) }
   if (!item.value.tempKey) item.value.tempKey = 'tk_' + Date.now() + '_' + Math.floor(Math.random() * 1000000)
 })
+
+// if opened for editing an existing item, load item data and images
+async function loadExistingItem(itemId) {
+  if (!itemId) return
+  try {
+    const res = await ApiHelper.get(`/items/${itemId}`)
+    if (res && res.code === 1 && res.data) {
+      let payload = res.data
+      if (payload && payload.item) payload = payload.item
+      // normalize
+      const data = Array.isArray(payload) && payload.length ? payload[0] : payload
+      if (!data) return
+      item.value.itemId = data.itemId || data.id || itemId
+      item.value.itemNo = data.itemNo || data.sku || data.code || item.value.itemNo
+      item.value.sellerPart = data.sellerPart || data.mfrPart || data.name || item.value.sellerPart
+      item.value.dictId = data.dictId || data.dict_id || item.value.dictId
+      item.value.qty = data.qty ?? data.quantity ?? item.value.qty
+      item.value.isGood = typeof data.isGood !== 'undefined' ? data.isGood : (data.is_good ?? item.value.isGood)
+      item.value.isUnpacked = typeof data.isUnpacked !== 'undefined' ? data.isUnpacked : (data.is_unpacked ?? item.value.isUnpacked)
+      item.value.iqcResult = data.iqcResult || data.iqc_result || item.value.iqcResult
+      item.value.receiveParcelId = data.receiveParcelId || data.receive_parcel_id || item.value.receiveParcelId
+      item.value.receivePackageNo = data.receivePackageNo || data.receive_package_no || item.value.receivePackageNo
+      // show receivePackageNo in top-level packageNo display
+      try { packageNo.value = item.value.receivePackageNo || packageNo.value } catch(e){}
+      // set dictIndex for selected dict name if dictOptions already loaded
+      try { if (item.value.dictId && Array.isArray(dictOptions.value) && dictOptions.value.length) { const idx = dictOptions.value.findIndex(d => (d.dictId == item.value.dictId) || (d.id == item.value.dictId)); if (idx >= 0) dictIndex.value = idx } } catch(e){}
+      // load images
+      try{
+        const imgRes = await ApiHelper.get('/image/manage/grouped', { moduleType: 'ITEM', recordId: item.value.itemId })
+        if (imgRes && imgRes.code === 1 && imgRes.data && Array.isArray(imgRes.data.ITEM_IMAGE)){
+          const host = ApiHelper.getHost()
+          itemImages.value = imgRes.data.ITEM_IMAGE.map(img => ({ id: img.id, imageUrl: img.imageUrl && img.imageUrl.startsWith('http') ? img.imageUrl : (host + (img.imageUrl || '')), thumbnailUrl: img.thumbnailUrl && img.thumbnailUrl.startsWith('http') ? img.thumbnailUrl : (host + (img.thumbnailUrl || img.imageUrl || '')), uploaded: true }))
+        }
+      }catch(e){ console.warn('load item images failed', e) }
+    }
+  } catch (e) { console.warn('loadExistingItem failed', e) }
+}
+
 </script>
 
 <style lang="scss" scoped>
@@ -343,6 +470,7 @@ onMounted(() => {
 .btn-default { background:#fff; border:1rpx solid #ddd; color:#666 }
 .btn-primary { background:#409EFF; color:#fff }
 .btn-submit { background:#67C23A; color:#fff }
+.btn-warning { background: #E6A23C; color: #fff }
 /* modal styles (shared with other pages) */
 /* modal styles moved to components/ModalPicker.vue */
 </style>

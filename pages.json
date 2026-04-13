@@ -74,6 +74,13 @@
       }
     },
     {
+      "path": "pages/item-service/index",
+      "style": {
+        "navigationBarTitleText": "商品查验",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/parcel-add/create",
       "style": {
         "navigationBarTitleText": "新建包裹",
@@ -90,6 +97,18 @@
       "path": "pages/parcel-add/item-entry",
       "style": {
         "navigationBarTitleText": "商品录入"
+      }
+    },
+    {
+      "path": "pages/parcel-add/item-test-entry",
+      "style": {
+        "navigationBarTitleText": "商品测试录入"
+      }
+    },
+    {
+      "path": "pages/parcel-add/item-repair-entry",
+      "style": {
+        "navigationBarTitleText": "商品维修录入"
       }
     },
     {
@@ -135,6 +154,23 @@
       "path": "pages/account/payables",
       "style": {
         "navigationBarTitleText": "我的应付",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    }
+    ,
+    {
+      "path": "pages/statement/collection",
+      "style": {
+        "navigationBarTitleText": "收款记录",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/statement/payment",
+      "style": {
+        "navigationBarTitleText": "付款记录",
         "navigationStyle": "custom",
         "enablePullDownRefresh": true
       }

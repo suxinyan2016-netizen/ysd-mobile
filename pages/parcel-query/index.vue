@@ -19,7 +19,7 @@
       <button class="search-btn" @click="doSearch">搜索</button>
     </view>
 
-    <view class="result-list">
+    <view :class="['result-list', { blocked: showDetail }]">
       <view v-if="loading" class="loading">加载中...</view>
 
       <view v-else>
@@ -70,6 +70,7 @@
 
         <view class="drawer-content">
           <view class="detail-list">
+            <!-- parcel images: moved below remarks -->
           <view class="detail-row"><text class="label">运单号:</text><text class="value">{{ sel.packageNo || '-' }}</text></view>
           <view class="detail-row"><text class="label">状态:</text><text class="value">{{ mapStatus(sel.status) }}</text></view>
           <view class="detail-row"><text class="label">ProcessID:</text><text class="value">{{ sel.processId || '-' }}</text></view>
@@ -90,6 +91,19 @@
           <view class="detail-row"><text class="label">支付状态:</text><text class="value">{{ sel.isPaid===1 ? '已结算' : '未结算' }}</text></view>
           <view class="detail-row"><text class="label">备注:</text><text class="value">{{ sel.remarks || '-' }}</text></view>
           
+          <!-- parcel images row: placed immediately after remarks -->
+          <view v-if="(sel._parcelImages && sel._parcelImages.length)" class="detail-row parcel-images-row">
+            <text class="label">包裹图片:</text>
+            <view class="value">
+              <view class="gallery-scroll">
+                <view v-for="(img, idx) in sel._parcelImages" :key="img.id || idx" class="photo-item" @click.stop="handleParcelImageClick(img)">
+                  <image :src="img.thumbnailUrl" mode="aspectFill"></image>
+                  <text class="img-label">{{ img.label }}</text>
+                </view>
+              </view>
+            </view>
+          </view>
+
           <view v-if="sel.itemList && sel.itemList.length" class="items-section">
             <text class="section-title">Items ({{ sel.itemList.length }})</text>
             <view class="items-wrap">
@@ -110,9 +124,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { ApiHelper } from '@/utils/apiHelper'
+import { openImageViewer } from '@/stores/imageViewer'
 
 const packageNo = ref('')
 const page = ref(1)
@@ -123,6 +137,7 @@ const loading = ref(false)
 
 const showDetail = ref(false)
 const sel = ref({})
+// use global viewer instead of local in-app viewer
 
 const totalPages = computed(() => Math.max(1, Math.ceil((total.value||0) / pageSize.value)))
 
@@ -163,6 +178,27 @@ async function openDetail(row){
     } else {
       sel.value = row
     }
+    // load parcel images grouped
+    try{
+      const gid = sel.value.parcelId || sel.value.id || row.parcelId
+      const imgRes = await ApiHelper.get('/image/manage/grouped', { moduleType: 'PARCEL', recordId: gid })
+      const host = ApiHelper.getHost()
+      const collected = []
+      if (imgRes && imgRes.code === 1 && imgRes.data) {
+        const groups = ['PACKAGE_SENDER','PACKAGE_RECEIVER','PACKAGE_LABEL','PACKING_LIST']
+        for (const g of groups){
+          const list = imgRes.data[g]
+          if (Array.isArray(list)){
+            for (const it of list){
+              const imageUrl = it.imageUrl && String(it.imageUrl).startsWith('http') ? it.imageUrl : (host + (it.imageUrl || it.fileUrl || ''))
+              const thumbnailUrl = it.thumbnailUrl && String(it.thumbnailUrl).startsWith('http') ? it.thumbnailUrl : (host + (it.thumbnailUrl || it.imageUrl || it.fileUrl || ''))
+              collected.push({ id: it.id, imageUrl, thumbnailUrl, label: mapParcelLabel(g), typeCode: g, raw: it })
+            }
+          }
+        }
+      }
+      sel.value._parcelImages = collected
+    }catch(e){ console.warn('load parcel images failed', e); sel.value._parcelImages = [] }
   }catch(e){
     console.error('openDetail error', e)
     sel.value = row
@@ -200,16 +236,42 @@ function goBack(){
   smartBack()
 }
 
-// Load first page automatically when entering the page
-onLoad(() => {
-  page.value = 1
-  doSearch()
-})
+function mapParcelLabel(code){
+  if (!code) return ''
+  const c = String(code).toUpperCase()
+  if (c === 'PACKAGE_SENDER') return '发货前外观'
+  if (c === 'PACKAGE_RECEIVER') return '收件后外观'
+  if (c === 'PACKAGE_LABEL') return '包裹标签'
+  if (c === 'PACKING_LIST') return '装箱单'
+  return ''
+}
 
-// Refresh when returning to the page
-onShow(() => {
+function handleParcelImageClick(img){
+  if (!img) return
+  console.log('[parcel-query] handleParcelImageClick', img)
+  const url = img.imageUrl || img.fileUrl || ''
+  if (!url) return
+  const lower = String(url).toLowerCase()
+  // if PDF, open with native document viewer (collapse drawer while open)
+  if (lower.endsWith('.pdf')){
+    const wasOpen = showDetail.value
+    try{ showDetail.value = false }catch(e){}
+    uni.openDocument({ filePath: url, complete() { try{ if (wasOpen) showDetail.value = true }catch(e){} } })
+    return
+  }
+  // for images, use global viewer mounted at app root
+  const imgs = (sel.value._parcelImages || []).map(i => i.imageUrl || i.fileUrl || '')
+  const idx = imgs.findIndex(u => u === url)
+  openImageViewer(imgs, idx >= 0 ? idx : 0)
+}
+
+// Load first page automatically when entering the page
+onMounted(() => {
   page.value = 1
   doSearch()
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('focus', () => { page.value = 1; doSearch() })
+  }
 })
 </script>
 
@@ -287,4 +349,18 @@ onShow(() => {
 
 .loading{ text-align:center; padding:40rpx }
 .empty{ text-align:center; padding:40rpx; color:#999 }
+
+/* parcel images gallery styles */
+.parcel-images-row .gallery-scroll{ display:flex; gap:12rpx; overflow:auto; padding:8rpx 0 }
+.parcel-images-row .photo-item{ width:140rpx; height:140rpx; border-radius:8rpx; overflow:hidden; position:relative; background:#f5f5f5; flex:0 0 auto }
+.parcel-images-row .photo-item image{ width:100%; height:100% }
+.parcel-images-row .img-label{ position:absolute; left:8rpx; bottom:6rpx; padding:4rpx 8rpx; background:rgba(0,0,0,0.45); color:#fff; border-radius:6rpx; font-size:20rpx }
+
+/* in-app parcel viewer styles */
+.image-viewer-overlay{ position:fixed; left:0; right:0; top:0; bottom:0; background:#000; z-index:99999; display:flex; align-items:center; justify-content:center }
+.viewer-swiper{ width:100%; height:100% }
+.viewer-item{ display:flex; align-items:center; justify-content:center; height:100% }
+.viewer-image{ width:100%; height:100% }
+.viewer-close{ position:absolute; top:28rpx; right:24rpx; width:88rpx; height:88rpx; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); border-radius:44rpx; box-shadow:0 6rpx 18rpx rgba(0,0,0,0.4) }
+.viewer-close-icon{ width:40rpx; height:40rpx }
 </style>

@@ -18,21 +18,23 @@
       <view class="search-input">
         <input v-model="sellerPart" placeholder="请输入商品名" />
       </view>
+
       <button class="search-btn" @click="doSearch">查询</button>
       <button class="more-btn" @click="openMore">更多</button>
     </view>
 
-    <view class="result-list">
+    <view :class="['result-list', { blocked: showDetail }]">
       <view v-if="loading" class="loading">加载中...</view>
       <view v-else>
         <view v-if="rows.length===0" class="empty">暂无结果</view>
         <view v-else>
           <view v-for="row in rows" :key="row.itemId" class="row-card" @click="openDetail(row)">
             <view class="row-top">
-              <text class="top-itemno">{{ row.itemNo || '-' }}</text>
-              <text class="top-dict">{{ row.dictName || '-' }}</text>
-              <text class="top-status">{{ mapItemStatus(row.itemStatus) }}</text>
-            </view>
+                  <text class="top-itemno">{{ row.itemNo || '-' }}</text>
+                  <text class="top-dict">{{ row.dictName || '-' }}</text>
+                  <text class="top-qty"><text class="qty-label">数量：</text><text class="qty-val">{{ row.qty ?? row.quantity ?? '-' }}</text></text>
+                  <text class="top-status">{{ mapItemStatus(row.itemStatus) }}</text>
+                </view>
             <view class="row-bottom">
               <text class="bottom-name">{{ row.sellerPart || row.mfrPart || '-' }}</text>
               <text :class="['bottom-isgood', row.isGood===0 ? 'bad' : 'good']">{{ row.isGood===1 ? '良品' : (row.isGood===0 ? '次品' : '-') }}</text>
@@ -58,7 +60,7 @@
       </view>
     </view>
 
-    <view v-if="showDetail" class="drawer-overlay" @click.self="closeDetail">
+    <view v-if="showDetail" :class="['drawer-overlay', { previewing: isPreviewing }]" @click.self="closeDetail">
       <view class="drawer">
         <view class="drawer-header">
           <text class="drawer-title">商品详情</text>
@@ -66,6 +68,9 @@
             <view v-if="showAddParcel" class="action-group">
               <button class="btn primary header-btn" @click="openTransfer">调拨出库</button>
               <button class="btn primary header-btn" @click="openUserSale">发售出库</button>
+            </view>
+            <view v-if="canSplit" class="action-group">
+              <button class="btn primary header-btn" @click.stop="openSplit">拆分</button>
             </view>
             <view class="close" @click="closeDetail">
               <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6 L18 18 M6 18 L18 6" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
@@ -102,11 +107,44 @@
           <view class="detail-row"><text class="label">费用备注:</text><text class="value">{{ sel.feeRemarks || sel.feeRemarks || sel.fee_remark || '-' }}</text></view>
           <view class="detail-row"><text class="label">付款日期:</text><text class="value">{{ sel.paymentDate || sel.payment_date || sel.paidDate || sel.paid_date || '-' }}</text></view>
           
+          <view v-if="itemImages.length" class="detail-row image-gallery-row">
+            <text class="label">商品图片:</text>
+            <view class="value">
+              <view class="gallery-scroll">
+                <view v-for="(img, idx) in itemImages" :key="img.id || idx" class="photo-item" @click.stop="previewImages(idx)">
+                  <image :src="img.thumbnailUrl" mode="aspectFill"></image>
+                  <text class="img-label">{{ mapImageLabel(img.typeCode) }}</text>
+                </view>
+              </view>
+            </view>
+          </view>
         </view>
       </view>
     </view>
 
-    <!-- More filters drawer -->
+      <!-- Split overlay -->
+      <view v-if="showSplit" class="more-overlay" @click.self="showSplit=false">
+        <view class="more-drawer">
+          <view class="drawer-header">
+            <text class="drawer-title">拆分商品</text>
+            <view class="close" @click="showSplit=false">
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6 L18 18 M6 18 L18 6" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+            </view>
+          </view>
+          <view class="more-row split-row">
+            <text class="label">当前数量</text>
+            <text class="picker-value">{{ sel.qty ?? sel.quantity ?? '-' }}</text>
+            <text class="label small">拆分数量</text>
+            <input type="number" v-model.number="splitQty" placeholder="请输入拆分数量" />
+          </view>
+          <view class="more-actions">
+            <button class="btn" @click="showSplit=false">取消</button>
+            <button class="btn primary" @click="confirmSplit">确定</button>
+          </view>
+        </view>
+      </view>
+
+      <!-- More filters drawer -->
     <view v-if="showMore" class="more-overlay" @click.self="closeMore">
       <view class="more-drawer">
         <view class="drawer-header">
@@ -171,21 +209,25 @@
 
     <!-- Picker modal -->
     <ModalPicker v-if="showPicker" :show="showPicker" :title="pickerTitle" :list="pickerList" @select="onPickerSelect" @close="closePicker" />
+    <!-- Global image viewer mounted in App.vue will handle previews -->
   </view>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import ModalPicker from '@/components/ModalPicker.vue'
+import { splitItem } from '@/utils/itemSplit'
 import { ApiHelper } from '@/utils/apiHelper'
+import { openImageViewer } from '@/stores/imageViewer'
 import { useUserStore } from '@/stores/user'
 import { smartBack } from '@/utils/navigation'
 
 const props = defineProps({
   title: { type: String, default: '商品查询' },
   fixedParam: { type: String, default: 'ownerId' },
-  otherPicker: { type: String, default: 'keeper' } // 'keeper' or 'owner'
+  otherPicker: { type: String, default: 'keeper' }, // 'keeper' or 'owner'
+  inspect: { type: [Boolean, String], default: false },
+  showInspectButton: { type: Boolean, default: true }
 })
 
 const userStore = useUserStore()
@@ -198,6 +240,14 @@ const rows = ref([])
 const loading = ref(false)
 const showDetail = ref(false)
 const sel = ref({})
+const showSplit = ref(false)
+const splitQty = ref(1)
+// when true the list was produced by the inspect action (keeperId + itemStatus=0)
+const isInspectMode = ref(false)
+// item images for detail drawer
+const itemImages = ref([])
+// when true we hide the drawer overlay so native preview isn't covered
+const isPreviewing = ref(false)
 // raw numeric refs populated when loading detail to avoid mapping issues
 const rawInspectFee = ref(null)
 const rawRepairFee = ref(null)
@@ -281,6 +331,38 @@ const rawCommissionModel = ref(null)
     }catch(e){ return false }
   })
 
+  const canSplit = computed(() => {
+    try{
+      const uid = getCurrentUserId()
+      if (!uid) return false
+      const ownerId = sel.value ? Number(sel.value.ownerId || sel.value.ownerId) : null
+      const status = sel.value ? Number(sel.value.itemStatus || sel.value.itemStatus) : null
+      const qty = Number(sel.value.qty ?? sel.value.quantity ?? 0)
+      return ownerId === uid && status === 1 && qty > 1
+    }catch(e){ return false }
+  })
+
+  function openSplit(){
+    if (!canSplit.value) { uni.showToast({ title: '不可拆分', icon: 'none' }); return }
+    splitQty.value = 1
+    showSplit.value = true
+  }
+
+  async function confirmSplit(){
+    const q = Number(splitQty.value)
+    const qty = Number(sel.value.qty ?? sel.value.quantity ?? 0)
+    if (!q || q < 1 || q >= qty) { uni.showToast({ title: '拆分数量应为正整数且小于当前数量', icon: 'none' }); return }
+    try{
+      await splitItem(sel.value.itemId, q)
+      uni.showToast({ title: '拆分成功', icon: 'success' })
+      showSplit.value = false
+      // refresh list and detail
+      page.value = 1
+      doSearch()
+      showDetail.value = false
+    }catch(e){ console.error('split failed', e); uni.showToast({ title: e?.message || '拆分失败', icon: 'none' }) }
+  }
+
   function addToParcel(){
     if (!sel.value || !sel.value.itemId) { uni.showToast({ title: '无可加入的商品', icon: 'none' }); return }
     try{ uni.navigateTo({ url: `/pages/parcel-add/create?itemId=${sel.value.itemId}` }) }catch(e){ uni.showToast({ title:'跳转失败', icon:'none' }) }
@@ -307,6 +389,21 @@ function goBack(){ smartBack() }
 function mapItemStatus(s){
   const m = { 0: '检验中', 1: '已入库', 2: '已出库', 9: '异常' }
   return m[s] || '-'
+}
+
+function mapImageLabel(type){
+  if (!type) return ''
+  const t = String(type).toUpperCase()
+  if (t === 'ITEM_IMAGE') return '验货'
+  if (t === 'ITEM_TEST') return '测试'
+  if (t === 'ITEM_REPAIR') return '维修'
+  return ''
+}
+
+function previewImages(index){
+  if (!Array.isArray(itemImages.value) || itemImages.value.length === 0) return
+  const imgs = itemImages.value.map(i => i.imageUrl || i.fileUrl || '')
+  openImageViewer(imgs, index || 0)
 }
 
 function getCurrentUserId(){
@@ -477,6 +574,8 @@ const selectedNeedTestLabel = ref('')
 const selectedNeedRepairLabel = ref('')
 
 async function doSearch(){
+  // normal search mode
+  isInspectMode.value = false
   loading.value = true
   rows.value = []
   try{
@@ -507,9 +606,37 @@ async function doSearch(){
   finally{ loading.value = false }
 }
 
+async function doInspectSearch(){
+  // force keeperId=current user and itemStatus=0
+  loading.value = true
+  isInspectMode.value = true
+  rows.value = []
+  try{
+    const uid = getCurrentUserId()
+    if (!uid){ uni.showToast({ title:'无法获取当前用户ID，无法查询', icon:'none' }); loading.value=false; return }
+    const params = { page: 1, pageSize: pageSize.value, keeperId: uid, itemStatus: 0 }
+    const res = await ApiHelper.get('/items', params)
+    if (res && res.code === 1 && res.data){
+      total.value = res.data.total || (res.data.rows ? res.data.rows.length : 0)
+      rows.value = res.data.rows || []
+      page.value = 1
+    } else { uni.showToast({ title: (res && res.msg) || '查询失败', icon:'none' }) }
+  }catch(e){ console.error('inspect search error', e); uni.showToast({ title:'网络错误', icon:'none' }) }
+  finally{ loading.value = false }
+}
+
 function gotoPage(p){ if (p<1) p=1; if (p>totalPages.value) p=totalPages.value; page.value = p; doSearch() }
 
 async function openDetail(row){
+  // if we're in inspect mode, open item edit/inspection page instead of drawer
+  if (isInspectMode.value) {
+    try{
+      const pkgNo = encodeURIComponent(row.receivePackageNo || row.receive_package_no || '')
+      const ownerId = row.ownerId || row.ownerId || ''
+      uni.navigateTo({ url: `/pages/parcel-add/item-entry?itemId=${row.itemId}&packageNo=${pkgNo}&ownerId=${ownerId}` })
+      return
+    }catch(e){ /* fallback to drawer if navigation fails */ }
+  }
   showDetail.value = true
   try{
     const res = await ApiHelper.get(`/items/${row.itemId}`)
@@ -531,16 +658,49 @@ async function openDetail(row){
       rawIsConsigned.value = typeof payload.isConsigned !== 'undefined' ? payload.isConsigned : (typeof payload.is_consigned !== 'undefined' ? payload.is_consigned : null)
       rawCommissionModel.value = typeof payload.commissionModel !== 'undefined' ? payload.commissionModel : (typeof payload.commission_model !== 'undefined' ? payload.commission_model : null)
       // debug logs removed
+      // load item images (grouped)
+      try{
+        const imgRes = await ApiHelper.get('/image/manage/grouped', { moduleType: 'ITEM', recordId: sel.value.itemId || sel.value.id || row.itemId })
+        if (imgRes && imgRes.code === 1 && imgRes.data){
+          const host = ApiHelper.getHost()
+          const keys = ['ITEM_IMAGE','ITEM_TEST','ITEM_REPAIR']
+          const gathered = []
+          for (const k of keys){
+            const list = imgRes.data[k]
+            if (Array.isArray(list)){
+              for (const img of list){
+                const imageUrl = img.imageUrl && String(img.imageUrl).startsWith('http') ? img.imageUrl : (host + (img.imageUrl || ''))
+                const thumbnailUrl = img.thumbnailUrl && String(img.thumbnailUrl).startsWith('http') ? img.thumbnailUrl : (host + (img.thumbnailUrl || img.imageUrl || ''))
+                gathered.push({ id: img.id, imageUrl, thumbnailUrl, typeCode: img.typeCode || img.type_code || k })
+              }
+            }
+          }
+          itemImages.value = gathered
+        } else {
+          itemImages.value = []
+        }
+      }catch(e){ console.warn('load item images failed', e); itemImages.value = [] }
     } else {
       sel.value = row || {}
     }
   }catch(e){ console.error('openDetail error', e); sel.value = row; uni.showToast({ title:'无法加载详情', icon:'none' }) }
 }
 
-function closeDetail(){ showDetail.value = false; sel.value = {} }
+function closeDetail(){ showDetail.value = false; sel.value = {}; itemImages.value = [] }
 
-onLoad(() => { page.value = 1; doSearch() })
-onShow(() => { page.value = 1; doSearch() })
+onMounted(() => {
+  page.value = 1
+  if (props.inspect) doInspectSearch()
+  else doSearch()
+
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('focus', () => {
+      page.value = 1
+      if (props.inspect) doInspectSearch()
+      else doSearch()
+    })
+  }
+})
 </script>
 
 <style scoped>
@@ -555,14 +715,28 @@ onShow(() => { page.value = 1; doSearch() })
 .search-input input{ flex:1; font-size:24rpx }
 .search-btn { width: 105rpx; height: 60rpx; line-height: 60rpx; text-align: center; background: linear-gradient(90deg, #409EFF, #66B1FF); color: #fff; border-radius: 8rpx; font-size: 20rpx; font-weight: 400; padding: 0 16rpx; display: flex; align-items: center; justify-content: center; box-shadow: 0 6rpx 18rpx rgba(64,158,255,0.12); border: none; margin-right: 8rpx; }
 .more-btn { width: 105rpx; height: 60rpx; line-height: 60rpx; text-align: center; background: linear-gradient(90deg, #409EFF, #66B1FF); color: #fff; border-radius: 8rpx; font-size: 20rpx; font-weight: 400; padding: 0 16rpx; display: flex; align-items: center; justify-content: center; box-shadow: 0 6rpx 18rpx rgba(64,158,255,0.12); border: none; }
+ .inspect-btn { width:60rpx; height:60rpx; display:flex; align-items:center; justify-content:center; border-radius:8rpx; margin-right:8rpx; background: linear-gradient(90deg,#409EFF,#66B1FF); border:none; box-shadow:0 6rpx 18rpx rgba(64,158,255,0.12) }
+ .inspect-btn svg{ width:28rpx; height:28rpx }
 .result-list{ flex:1; padding:20rpx }
 .row-card{ background:#fff; padding:12rpx; border-radius:8rpx; margin-bottom:12rpx; display:flex; flex-direction:column }
-.row-top{ display:flex; gap:12rpx; align-items:center; margin-bottom:6rpx }
-.row-bottom{ display:flex; gap:12rpx; align-items:center }
-.row-top text, .row-bottom text { font-size:10px; color:#333 }
-.top-itemno{ flex:1; color:#409EFF }
-.top-dict{ width:120px; color:#666 }
-.top-status{ width:80px; color:#666 }
+  .row-top{ display:flex; gap:12rpx; align-items:center; margin-bottom:6rpx }
+  .row-bottom{ display:flex; gap:12rpx; align-items:center }
+  .row-top text, .row-bottom text { font-size:10px; color:#333 }
+
+  /* Column layout: col1 flexible, col2 120, col3 110, col4 80 */
+  .top-itemno{ width:200px; color:#409EFF }
+  .bottom-name{ width:200px; color:#333 }
+
+  .top-dict{ width:120px; color:#666; text-align:left }
+  .bottom-isgood{ width:120px; text-align:left }
+
+  .top-qty{ width:110px; color:#666; display:flex; align-items:center; gap:6rpx; justify-content:flex-start }
+  .bottom-owner{ width:110px; color:#666; text-align:left }
+  .qty-label{ color:#666; font-size:10px; margin-right:6rpx }
+  .qty-val{ font-weight:400 }
+
+  .top-status{ width:80px; color:#666; text-align:left }
+  .bottom-keeper{ width:80px; color:#666; text-align:left }
 .bottom-name{ flex:3; color:#333 }
   .bottom-isgood{ width:80px; text-align:center }
   .bottom-isgood.bad{ color:#FF4D4F }
@@ -614,4 +788,28 @@ onShow(() => { page.value = 1; doSearch() })
 .radio-item{ display:flex; align-items:center; gap:12rpx; color:#333; font-size:20rpx; padding:8rpx 12rpx; min-width:120rpx; border-radius:10rpx; border:1rpx solid #ececec; cursor:pointer; background:#fff }
 .radio-item radio{ width:44rpx; height:44rpx }
 .radio-item.active{ background:#409EFF; color:#fff; border-color:#409EFF }
+
+/* split overlay alignment */
+.split-row{ display:flex; align-items:center; gap:12rpx }
+.split-row .label{ width:140rpx }
+.split-row .label.small{ width:120rpx; text-align:left }
+.split-row .picker-value{ width:110rpx; text-align:right; font-size:22rpx }
+.split-row input{ width:140rpx; text-align:right; font-size:26rpx; padding:8rpx 12rpx; border-radius:8rpx; border:1rpx solid #ececec }
+
+/* image gallery in detail drawer */
+.image-gallery-row .gallery-scroll{ display:flex; gap:12rpx; overflow:auto; padding:8rpx 0 }
+.photo-item{ width:140rpx; height:140rpx; border-radius:8rpx; overflow:hidden; position:relative; background:#f5f5f5; flex:0 0 auto }
+.photo-item image{ width:100%; height:100%; display:block }
+.photo-item .img-label{ position:absolute; left:8rpx; bottom:6rpx; padding:4rpx 8rpx; background:rgba(0,0,0,0.45); color:#fff; border-radius:6rpx; font-size:20rpx }
+/* while native preview is open, hide drawer overlay so preview isn't covered */
+.drawer-overlay.previewing{ opacity:0; pointer-events:none }
+
+/* in-app image viewer styles */
+.image-viewer-overlay{ position:fixed; left:0; right:0; top:0; bottom:0; background:#000; z-index:99999; display:flex; align-items:center; justify-content:center }
+.viewer-swiper{ width:100%; height:100% }
+.viewer-item{ display:flex; align-items:center; justify-content:center; height:100% }
+.viewer-image{ width:100%; height:100% }
+.viewer-close{ position:absolute; top:28rpx; right:24rpx; width:88rpx; height:88rpx; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); border-radius:44rpx; box-shadow:0 6rpx 18rpx rgba(0,0,0,0.4) }
+.viewer-close-icon{ width:40rpx; height:40rpx }
+.blocked{ pointer-events:none }
 </style>

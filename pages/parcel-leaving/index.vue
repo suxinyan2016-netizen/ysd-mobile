@@ -113,7 +113,6 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
 import { ApiHelper } from '@/utils/apiHelper'
 import { useUserStore } from '@/stores/user'
 
@@ -392,8 +391,13 @@ function handleLogout() {
 function onRefresh(){ refreshing.value=true; loadParcels(true) }
 function onLoadMore(){ if (hasMore.value && !loading.value) { currentPage.value++; loadParcels() } }
 
-onMounted(()=>{ if (!userStore.userInfo?.id) userStore.checkLoginStatus(); loadParcels(true) })
-onShow(()=>{ loadParcels(true) })
+onMounted(()=>{
+  if (!userStore.userInfo?.id) userStore.checkLoginStatus()
+  loadParcels(true)
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('focus', () => { loadParcels(true) })
+  }
+})
 
 import { smartBack } from '@/utils/navigation'
 

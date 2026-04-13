@@ -1,5 +1,5 @@
 <template>
-  <ItemQuery title="仓库库存" fixedParam="keeperId" otherPicker="owner"></ItemQuery>
+  <ItemQuery title="仓库库存" fixedParam="keeperId" otherPicker="owner" :showInspectButton="false"></ItemQuery>
 </template>
 
 <script setup>

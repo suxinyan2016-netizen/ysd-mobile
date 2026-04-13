@@ -27,7 +27,7 @@
         搜索
       </button>
       <button class="create-btn" @click="handleCreate">
-        新建
+        收包裹
       </button>
     </view>
     
@@ -109,7 +109,6 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
 import { ApiHelper } from '@/utils/apiHelper'
 import { useUserStore } from '@/stores/user'
 
@@ -280,12 +279,14 @@ function getStatusClass(status) {
 onMounted(() => {
   userStore.checkLoginStatus()
   loadParcels(true)
-})
 
-// 页面显示时刷新数据（从验收页面返回时会触发）
-onShow(() => {
-  userStore.checkLoginStatus()
-  loadParcels(true)
+  // Emulate onShow in H5 by listening to window focus events
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('focus', () => {
+      userStore.checkLoginStatus()
+      loadParcels(true)
+    })
+  }
 })
 
 import { smartBack } from '@/utils/navigation'

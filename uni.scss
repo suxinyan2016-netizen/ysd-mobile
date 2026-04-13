@@ -115,54 +115,48 @@ $uni-font-size-paragraph:15px;
 	color: #fff !important;
 }
 
-/* Global styles for parcel home icons */
+/* Global icon-card styles used across pages (defaults) */
+.icon-card {
+	height: 150rpx;
+	background: #fff;
+	border-radius: 18rpx;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	box-shadow: 0 8rpx 20rpx rgba(0,0,0,0.06);
+	cursor: pointer;
+	min-width: 0;
+}
+
+.icon {
+	font-size: 54rpx;
+	margin-bottom: 10rpx;
+	text-align: center;
+}
+
+.label {
+	font-size: 20rpx;
+	color: #333;
+	text-align: center;
+}
+
+@media (max-width: 480px) {
+	.icon-card { width:170rpx; height:140rpx }
+	.icon { font-size:44rpx }
+	.label { font-size:16rpx }
+}
+
+/* parcel-home page controls layout only; sizes inherit from globals above */
 .parcel-home {
-		.icons {
-			display: grid;
-			grid-template-columns: repeat(2, 1fr);
-			/* reduced vertical gap for a tighter layout */
-			gap: 120rpx 16rpx;
-			width: 100%;
-			padding: 0 20rpx;
-			box-sizing: border-box;
-			align-items: center;
-		}
-
-		.icon-card {
-			width: 100%;
-			height: 150rpx;
-			background: #fff;
-			border-radius: 18rpx;
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			justify-content: center;
-			box-shadow: 0 8rpx 20rpx rgba(0,0,0,0.06);
-			cursor: pointer;
-			min-width: 0;
-		}
-
-		/* slightly smaller icon and label for a compact look */
-		.icon {
-			font-size:48rpx;
-			margin-bottom:8rpx;
-			text-align:center;
-		}
-
-		.label {
-			font-size:18rpx;
-			color:#333;
-			text-align:center;
-		}
-
-	@media (max-width: 480px) {
-		.icon-card { width:170rpx; height:140rpx }
-		.icon { font-size:44rpx }
-		.label { font-size:16rpx }
-	}
-
-	/* ensure grid cells align items to top and center horizontally */
 	.icons {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 120rpx 16rpx;
+		width: 100%;
+		padding: 0 20rpx;
+		box-sizing: border-box;
+		align-items: center;
 		place-items: start center;
 	}
 }

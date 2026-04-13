@@ -1,7 +1,8 @@
 <!-- App.vue -->
 <script setup>
-import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
+import { onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
+import GlobalImageViewer from '@/components/GlobalImageViewer.vue'
 
 // 设置全局错误处理
 const setupErrorHandling = () => {
@@ -42,21 +43,21 @@ const setupErrorHandling = () => {
   }
 }
 
-onLaunch(() => {
+onMounted(() => {
   console.log('App Launch - 应用启动')
-  
+
   setupErrorHandling()
-  
+
   // 重要：完全禁用自动跳转，手动控制路由
   setTimeout(() => {
     try {
       console.log('开始检查登录状态（仅检查，不跳转）')
       const userStore = useUserStore()
-      
+
       // 仅检查，不自动跳转
       const savedToken = uni.getStorageSync('token')
       const savedUser = uni.getStorageSync('loginUser')
-      
+
       if (savedToken && savedUser) {
         console.log('检测到已登录，设置用户状态')
         userStore.token = savedToken
@@ -74,27 +75,32 @@ onLaunch(() => {
         userStore.userInfo = null
         userStore.isLoggedIn = false
       }
-      
+
       console.log('用户状态检查完成:', {
         isLoggedIn: userStore.isLoggedIn,
         userInfo: userStore.userInfo
       })
-      
+
     } catch (error) {
       console.error('初始化用户状态时出错:', error)
       // 不进行任何跳转
     }
   }, 500)
+
+  // Emulate onShow for H5: log when window gains focus
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('focus', () => console.log('App Show - 应用显示'))
+  }
 })
 
-onShow(() => {
-  console.log('App Show - 应用显示')
-})
-
-onHide(() => {
-  console.log('App Hide - 应用隐藏')
-})
+// onHide lifecycle is not available in the H5 hook exports used here;
+// skip adding an onHide listener to avoid runtime import errors.
 </script>
+
+<template>
+  <slot />
+  <GlobalImageViewer />
+</template>
 
 <style lang="scss">
 @import '@/static/common.scss';
