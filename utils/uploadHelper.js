@@ -54,6 +54,7 @@ export function uploadFile(filePath, moduleType, recordId, imageType, tempKey) {
       const formData = { moduleType, recordId, imageType }
       // include tempKey when provided so backend can associate uploads with a transient owner
       if (tempKey) formData.tempKey = tempKey
+      console.debug('[uploadFile] uploading', { uploadUrl, filePath, formData })
       uni.uploadFile({ url: uploadUrl, filePath, name: 'file', header: headers, formData, success: (uploadRes) => {
         try {
           const data = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
@@ -73,13 +74,27 @@ export function uploadFile(filePath, moduleType, recordId, imageType, tempKey) {
  * @param {number|string} recordId
  */
 export async function reassignAttachments(moduleType, tempKey, recordId) {
-  // The backend does not expose /image/manage/reassign in this deployment.
-  // To avoid network errors, make this a safe no-op that returns a resolved value.
   if (!tempKey) {
     console.warn('reassignAttachments called without tempKey — nothing to do')
     return null
   }
-  console.warn(`[reassignAttachments] skipped: backend endpoint removed — moduleType=${moduleType}, tempKey=${tempKey}, recordId=${recordId}`)
-  // Return a benign value consistent with previous successful responses.
-  return { skipped: true }
+  try {
+    // Prefer the new tempKey-based endpoint
+    const payload = { moduleType, tempKey, newRecordId: recordId }
+    console.debug('[reassignAttachments] calling reassign-by-tempkey', payload)
+    const res = await ApiHelper.post('/image/manage/reassign-by-tempkey', payload)
+    if (res && res.code === 1) return res
+    // Fallback: try the reassign by oldRecordId endpoint (some deployments require uploadBy header)
+    let username = null
+    try { const saved = uni.getStorageSync('loginUser'); if (saved) { const u = JSON.parse(saved); username = u?.name || u?.username || null } } catch (e) {}
+    const headers = username ? { username } : {}
+    const fallbackPayload = { moduleType, oldRecordId: -1, newRecordId: recordId }
+    console.debug('[reassignAttachments] fallback reassign', { fallbackPayload, headers })
+    const r2 = await ApiHelper.post('/image/manage/reassign', fallbackPayload, headers)
+    return r2
+  } catch (err) {
+    console.warn('[reassignAttachments] failed or endpoint unavailable', err)
+    // don't throw — reassign is best-effort
+    return { skipped: true, error: String(err && err.message ? err.message : err) }
+  }
 }
