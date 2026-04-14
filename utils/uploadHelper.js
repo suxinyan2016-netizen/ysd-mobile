@@ -82,7 +82,9 @@ export async function reassignAttachments(moduleType, tempKey, recordId) {
     // Prefer the new tempKey-based endpoint
     const payload = { moduleType, tempKey, newRecordId: recordId }
     console.debug('[reassignAttachments] calling reassign-by-tempkey', payload)
-    const res = await ApiHelper.post('/image/manage/reassign-by-tempkey', payload)
+    // Spring controller expects request parameters; send as form-urlencoded
+    const form = new URLSearchParams(payload).toString()
+    const res = await ApiHelper.post('/image/manage/reassign-by-tempkey', form, { 'Content-Type': 'application/x-www-form-urlencoded' })
     if (res && res.code === 1) return res
     // Fallback: try the reassign by oldRecordId endpoint (some deployments require uploadBy header)
     let username = null
@@ -90,7 +92,8 @@ export async function reassignAttachments(moduleType, tempKey, recordId) {
     const headers = username ? { username } : {}
     const fallbackPayload = { moduleType, oldRecordId: -1, newRecordId: recordId }
     console.debug('[reassignAttachments] fallback reassign', { fallbackPayload, headers })
-    const r2 = await ApiHelper.post('/image/manage/reassign', fallbackPayload, headers)
+    const form2 = new URLSearchParams(fallbackPayload).toString()
+    const r2 = await ApiHelper.post('/image/manage/reassign', form2, Object.assign({ 'Content-Type': 'application/x-www-form-urlencoded' }, headers))
     return r2
   } catch (err) {
     console.warn('[reassignAttachments] failed or endpoint unavailable', err)

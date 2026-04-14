@@ -129,6 +129,10 @@ const canAddMore = computed(() => itemImages.value.length < 6)
 const dictIndex = ref(0)
 const selectedDictName = computed(() => { if (!dictOptions.value || !dictOptions.value.length) return ''; const idx = dictIndex.value || 0; const d = dictOptions.value[idx]; return d ? d.dictName : '' })
 
+function generateTempKey(){
+  return 'tk_' + Date.now() + '_' + Math.random().toString(36).slice(2,10)
+}
+
 function onDictChange(e) { const idx = e && e.detail && typeof e.detail.value !== 'undefined' ? Number(e.detail.value) : 0; dictIndex.value = idx; const sel = dictOptions.value[idx]; item.value.dictId = sel ? sel.dictId : null }
 
 // modal picker state for unified modal
@@ -176,7 +180,17 @@ async function loadDicts() {
 }
 
 const recordedItemIds = ref([])
-async function chooseImage() { if (!item.value.tempKey) item.value.tempKey = 'tk_' + Date.now() + '_' + Math.floor(Math.random() * 1000000); uni.chooseImage({ count: 6 - itemImages.value.length, sizeType: ['compressed'], sourceType: ['camera','album'], success: async (res) => { for (const fp of res.tempFilePaths) { itemImages.value.push({ imageUrl: fp, thumbnailUrl: fp, uploaded: false, uploading: false }) } }}) }
+async function chooseImage() {
+  if (!item.value.tempKey) {
+    item.value.tempKey = generateTempKey()
+    console.debug('[item-entry] chooseImage generated tempKey', item.value.tempKey)
+  }
+  uni.chooseImage({ count: 6 - itemImages.value.length, sizeType: ['compressed'], sourceType: ['camera','album'], success: async (res) => {
+    for (const fp of res.tempFilePaths) {
+      itemImages.value.push({ imageUrl: fp, thumbnailUrl: fp, uploaded: false, uploading: false })
+    }
+  }})
+}
 
 async function removeImage(index) { const img = itemImages.value[index]; if (img.id && img.uploaded) { try { await ApiHelper.deleteImage(img.id) } catch(e) { console.warn(e) } } itemImages.value.splice(index,1) }
 
@@ -194,7 +208,10 @@ async function handleSave() {
   isSaving.value = true
   uni.showLoading({ title: '保存中...' })
   try {
-    if (!item.value.tempKey) item.value.tempKey = 'tk_' + Date.now() + '_' + Math.floor(Math.random()*10000)
+    if (!item.value.tempKey) {
+      item.value.tempKey = generateTempKey()
+      console.debug('[item-entry] handleSave set tempKey', item.value.tempKey)
+    }
     const payload = {
       itemNo: item.value.itemNo,
       sellerPart: item.value.sellerPart,
@@ -344,7 +361,8 @@ function handleNext() {
   item.value.dictId = null
   dictIndex.value = 0
   item.value.itemId = null
-  item.value.tempKey = 'tk_' + Date.now() + '_' + Math.floor(Math.random() * 10000)
+  item.value.tempKey = generateTempKey()
+  console.debug('[item-entry] handleNext new tempKey', item.value.tempKey)
   itemImages.value = []
   uni.showToast({ title: '可以录入下一个商品', icon: 'success' })
 }
@@ -401,7 +419,10 @@ onMounted(async () => {
       }
     }
   } catch(e) { console.warn('storage fallback for parcelTransfer failed', e) }
-  if (!item.value.tempKey) item.value.tempKey = 'tk_' + Date.now() + '_' + Math.floor(Math.random() * 1000000)
+  if (!item.value.tempKey) {
+    item.value.tempKey = generateTempKey()
+    console.debug('[item-entry] onMounted set tempKey', item.value.tempKey)
+  }
 })
 
 // if opened for editing an existing item, load item data and images
