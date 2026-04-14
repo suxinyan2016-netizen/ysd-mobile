@@ -273,6 +273,12 @@ async function handleSave() {
       } catch (bindErr) {
         console.warn('reassign attachments by tempKey failed (non-fatal)', bindErr)
       }
+      // Also try a direct API call in case the helper is a no-op in this deployment.
+      try {
+        await ApiHelper.post('/image/manage/reassign', { moduleType: 'ITEM', tempKey: item.value.tempKey, recordId: itemId })
+      } catch (e) {
+        // endpoint may not exist — ignore
+      }
     }
 
     uni.hideLoading()
