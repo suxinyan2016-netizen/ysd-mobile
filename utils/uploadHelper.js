@@ -47,14 +47,15 @@ export function chooseFileFlexible({ count = 1, allowPdf = true } = {}) {
 export function uploadFile(filePath, moduleType, recordId, imageType, tempKey) {
   return new Promise((resolve, reject) => {
     try {
-      const uploadUrl = ApiHelper.baseUrl + '/image/manage/upload'
+        const uploadUrl = ApiHelper.baseUrl + '/image/manage/upload'
       let username = null
       try { const saved = uni.getStorageSync('loginUser'); if (saved) { const u = JSON.parse(saved); username = u?.name || u?.username || null } } catch (e) {}
       const headers = ApiHelper.getAuthHeaders(username ? { username } : {})
       const formData = { moduleType, recordId, imageType }
       // include tempKey when provided so backend can associate uploads with a transient owner
       if (tempKey) formData.tempKey = tempKey
-      console.debug('[uploadFile] uploading', { uploadUrl, filePath, formData })
+        // Detailed debug: include headers and final formData used for upload
+        console.debug('[uploadFile] uploading', { uploadUrl, filePath, formData, headers })
       uni.uploadFile({ url: uploadUrl, filePath, name: 'file', header: headers, formData, success: (uploadRes) => {
         try {
           const data = typeof uploadRes.data === 'string' ? JSON.parse(uploadRes.data) : uploadRes.data
@@ -84,12 +85,13 @@ export async function reassignAttachments(moduleType, tempKey, recordId) {
     console.debug('[reassignAttachments] calling reassign-by-tempkey', payload)
     // Spring controller expects request parameters; send as form-urlencoded
     const form = new URLSearchParams(payload).toString()
-    const res = await ApiHelper.post('/image/manage/reassign-by-tempkey', form, { 'Content-Type': 'application/x-www-form-urlencoded' })
-    if (res && res.code === 1) return res
-    // Fallback: try the reassign by oldRecordId endpoint (some deployments require uploadBy header)
+    // include username header if available (backend requires it)
     let username = null
     try { const saved = uni.getStorageSync('loginUser'); if (saved) { const u = JSON.parse(saved); username = u?.name || u?.username || null } } catch (e) {}
-    const headers = username ? { username } : {}
+    const headers = ApiHelper.getAuthHeaders(username ? { username } : {})
+    const res = await ApiHelper.post('/image/manage/reassign-by-tempkey', form, Object.assign({ 'Content-Type': 'application/x-www-form-urlencoded' }, headers))
+    if (res && res.code === 1) return res
+    // Fallback: try the reassign by oldRecordId endpoint (some deployments require uploadBy header)
     const fallbackPayload = { moduleType, oldRecordId: -1, newRecordId: recordId }
     console.debug('[reassignAttachments] fallback reassign', { fallbackPayload, headers })
     const form2 = new URLSearchParams(fallbackPayload).toString()

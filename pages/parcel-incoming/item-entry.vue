@@ -81,6 +81,7 @@
       <view class="action-btns">
         <button class="btn btn-default" @click="goBack">上一步</button>
         <button class="btn btn-save" :disabled="isSaving" @click="handleSave">保存</button>
+        <button v-if="route && route.query && route.query.debug === '1'" class="btn btn-debug" @click="debugAttachments">Debug</button>
         <button class="btn btn-primary" :disabled="isSaving" @click="handleNext">下一步</button>
       </view>
       <!-- reusable modal component -->
@@ -205,6 +206,20 @@ async function loadDicts() {
 
       const recordedItemIds = ref([]) // store itemIds recorded when navigating between items so they can be updated on submit
 async function chooseImage() {
+  // If there's an existing itemId, confirm with the user before clearing it
+  if (item.value.itemId) {
+    try {
+      const ans = await new Promise((resolve) => {
+        uni.showModal({ title: '确认', content: '当前记录已保存（itemId=' + item.value.itemId + '）。要为新商品添加照片请先清空表单并开始新录入，是否清空并继续？', success: (r) => resolve(r) })
+      })
+      if (ans && ans.confirm) {
+        handleNext()
+      } else {
+        return
+      }
+    } catch (e) { console.warn('chooseImage confirm failed', e); return }
+  }
+
   // ensure a tempKey exists before selecting images so any server-side fallback matching can use it
   if (!item.value.tempKey) item.value.tempKey = 'tk_' + Date.now() + '_' + Math.floor(Math.random() * 1000000)
   uni.chooseImage({ count: 6 - itemImages.value.length, sizeType: ['compressed'], sourceType: ['camera','album'], success: async (res) => {
@@ -267,12 +282,15 @@ async function handleSave() {
     // determine create vs update
     let itemId = item.value.itemId || null
     let res
+    const previousItemId = item.value.itemId || null
     if (itemId) {
       // update existing item
       res = await ApiHelper.put('/items', { ...payload, itemId })
+      console.debug('[handleSave] update item response', { previousItemId, res })
     } else {
       // create new item
       res = await ApiHelper.post('/items', payload)
+      console.debug('[handleSave] create item response', { previousItemId, res })
     }
     if (!(res && res.code === 1)) throw new Error(res?.msg || '保存item失败')
 
@@ -300,14 +318,31 @@ async function handleSave() {
     if (itemId) {
       item.value.itemId = Number(itemId)
       recordIdForUpload = Number(itemId)
+      // If the server returned an itemId we've already seen in this session,
+      // abort to avoid uploading images that would be reassigned to the same record.
+      if (recordedItemIds.value && recordedItemIds.value.includes(Number(itemId))) {
+        console.error('[handleSave] server returned duplicate itemId for new create', { itemId, recordedItemIds: recordedItemIds.value })
+        try { await new Promise((resolve) => uni.showModal({ title: '错误', content: '服务器返回重复的 itemId: ' + itemId + '，已停止本次保存并阻止图片上传，请检查服务端。', showCancel: false, success: () => resolve() })) } catch(e){}
+        uni.hideLoading()
+        isSaving.value = false
+        return null
+      }
+      try { recordedItemIds.value.push(Number(itemId)) } catch(e){/* ignore */}
     }
 
-    // upload images: prefer numeric recordId but always include tempKey so backend can associate
-    const uploadRecordId = recordIdForUpload || -1
+    // upload images: if we have a numeric itemId, upload directly to that id and DO NOT include tempKey.
+    // If no itemId yet (creating), upload as temporary: recordId = -1 and include tempKey so server can reassign later.
     for (const img of itemImages.value) {
       if (!img.uploaded && img.imageUrl) {
         try {
-          const u = await uploadImage(img.imageUrl, uploadRecordId, item.value.tempKey)
+          // If a tempKey exists (client-generated, starts with 'tk_'), prefer temporary upload
+          const hasClientTempKey = !!(item.value.tempKey && String(item.value.tempKey).startsWith('tk_'))
+          const useTemp = hasClientTempKey || !itemId
+          if (useTemp && itemId) console.warn('[parcel-incoming] forcing temporary upload despite existing itemId', { itemId, tempKey: item.value.tempKey })
+          const uploadId = useTemp ? -1 : Number(itemId)
+          const uploadTempKey = useTemp ? item.value.tempKey : null
+          console.debug('[parcel-incoming] uploadImage call', { file: img.imageUrl, uploadId, uploadTempKey })
+          const u = await uploadImage(img.imageUrl, uploadId, uploadTempKey)
           img.id = u.id
           const host = ApiHelper.getHost()
           img.imageUrl = u.imageUrl && u.imageUrl.startsWith('http') ? u.imageUrl : (host + (u.imageUrl || ''))
@@ -329,6 +364,8 @@ async function handleSave() {
       }
     }
 
+    // no-op end of save
+
     uni.hideLoading()
     uni.showToast({ title: '保存成功', icon: 'success' })
     return itemId
@@ -338,6 +375,32 @@ async function handleSave() {
     uni.showToast({ title: '保存失败: ' + (e?.message || ''), icon: 'none' })
     return null
   } finally { isSaving.value = false }
+}
+
+// Debug helper: query attachments by tempKey and by recordId and show results
+async function debugAttachments() {
+  try {
+    const tk = item.value.tempKey || ''
+    const id = item.value.itemId || null
+    console.debug('[debugAttachments] tempKey, itemId', tk, id)
+    if (tk) {
+      const r1 = await ApiHelper.get('/image/manage/by-tempkey', { moduleType: 'ITEM', tempKey: tk })
+      console.log('by-tempkey', r1)
+      try { uni.showModal({ title: 'by-tempkey', content: JSON.stringify(r1, null, 2).slice(0, 2000), showCancel: false }) } catch(e){}
+    } else {
+      console.log('debugAttachments: no tempKey present')
+    }
+    if (id) {
+      const r2 = await ApiHelper.get('/image/manage/by-record', { moduleType: 'ITEM', recordId: id })
+      console.log('by-record', r2)
+      try { uni.showModal({ title: 'by-record', content: JSON.stringify(r2, null, 2).slice(0, 2000), showCancel: false }) } catch(e){}
+    } else {
+      console.log('debugAttachments: no itemId present')
+    }
+  } catch (err) {
+    console.warn('debugAttachments failed', err)
+    try { uni.showToast({ title: 'debug failed: ' + (err?.message||''), icon: 'none' }) } catch(e){}
+  }
 }
 
 function handleNext() {

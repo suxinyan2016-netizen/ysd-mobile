@@ -81,6 +81,7 @@
       <view class="action-btns">
         <button v-if="showStepButtons" class="btn btn-default" @click="goBack">上一步</button>
         <button class="btn btn-save" :disabled="isSaving" @click="handleSave">保存</button>
+        <button v-if="route && route.query && route.query.debug === '1'" class="btn btn-debug" @click="debugAttachments">Debug</button>
         <button v-if="!showStepButtons" class="btn btn-warning" :disabled="isSaving" @click="handleSubmitFromService">提交</button>
         <button v-if="showStepButtons" class="btn btn-primary" :disabled="isSaving" @click="handleNext">下一步</button>
       </view>
@@ -181,13 +182,27 @@ async function loadDicts() {
 
 const recordedItemIds = ref([])
 async function chooseImage() {
+  // If there's an existing itemId but the user intends to create a new item,
+  // prompt to start a fresh entry to avoid binding images to the existing item.
+  if (item.value.itemId) {
+    try {
+      const r = await new Promise((resolve) => {
+        uni.showModal({ title: '确认', content: '检测到当前记录已保存（itemId=' + item.value.itemId + '）。要为新商品添加照片请先清空表单并开始新录入，是否清空并继续？', success: (resModal) => resolve(resModal) })
+      })
+      if (r && r.confirm) {
+        handleNext()
+      } else {
+        return
+      }
+    } catch (e) { console.warn('chooseImage confirm failed', e); return }
+  }
   if (!item.value.tempKey) {
     item.value.tempKey = generateTempKey()
     console.debug('[item-entry] chooseImage generated tempKey', item.value.tempKey)
   }
   uni.chooseImage({ count: 6 - itemImages.value.length, sizeType: ['compressed'], sourceType: ['camera','album'], success: async (res) => {
     for (const fp of res.tempFilePaths) {
-      itemImages.value.push({ imageUrl: fp, thumbnailUrl: fp, uploaded: false, uploading: false })
+      itemImages.value.push({ imageUrl: fp, thumbnailUrl: fp, localPath: fp, uploaded: false, uploading: false })
     }
   }})
 }
@@ -266,12 +281,21 @@ async function handleSave() {
     let recordIdForUpload = null
     if (itemId) { item.value.itemId = Number(itemId); recordIdForUpload = Number(itemId) }
 
-    // upload images: prefer numeric recordId but always include tempKey so backend can associate
-    const uploadRecordId = recordIdForUpload || -1
+    // upload images: if we have a numeric itemId, upload directly to that id and DO NOT include tempKey.
+    // If no itemId yet (creating), upload as temporary: recordId = -1 and include tempKey so server can reassign later.
     for (const img of itemImages.value) {
-      if (!img.uploaded && img.imageUrl) {
+      if (!img.uploaded) {
+        const fileToUpload = img.localPath || img.imageUrl
+        if (!fileToUpload) continue
         try {
-          const u = await uploadImage(img.imageUrl, uploadRecordId, item.value.tempKey)
+          // If a tempKey exists (client-generated, starts with 'tk_'), prefer temporary upload
+          const hasClientTempKey = !!(item.value.tempKey && String(item.value.tempKey).startsWith('tk_'))
+          const useTemp = hasClientTempKey || !itemId
+          if (useTemp && itemId) console.warn('[item-entry] forcing temporary upload despite existing itemId', { itemId, tempKey: item.value.tempKey })
+          const uploadId = useTemp ? -1 : Number(itemId)
+          const uploadTempKey = useTemp ? item.value.tempKey : null
+          console.debug('[item-entry] uploadImage call', { fileToUpload, uploadId, uploadTempKey })
+          const u = await uploadImage(fileToUpload, uploadId, uploadTempKey)
           img.id = u.id
           const host = ApiHelper.getHost()
           img.imageUrl = u.imageUrl && u.imageUrl.startsWith('http') ? u.imageUrl : (host + (u.imageUrl || ''))
@@ -286,11 +310,75 @@ async function handleSave() {
     // best-effort: attempt to reassign attachments from tempKey to created itemId
     if (itemId && item.value.tempKey) {
       try {
-        await reassignAttachments('ITEM', item.value.tempKey, itemId)
+        const ra = await reassignAttachments('ITEM', item.value.tempKey, itemId)
+        if (!(ra && ra.code === 1)) {
+          console.warn('reassignAttachments did not return success, will attempt client-side reupload fallback', ra)
+          // fallback: re-upload any images that still have a localPath to the resolved itemId
+          const fallbackUploadId = Number(itemId)
+          for (const img of itemImages.value) {
+            const src = img.localPath || (img.imageUrl && img.imageUrl.startsWith('/') ? img.imageUrl : null)
+            if (!src) continue
+            try {
+              const u2 = await uploadImage(src, fallbackUploadId, null)
+              img.id = u2.id
+              const host = ApiHelper.getHost()
+              img.imageUrl = u2.imageUrl && u2.imageUrl.startsWith('http') ? u2.imageUrl : (host + (u2.imageUrl || ''))
+              img.thumbnailUrl = u2.thumbnailUrl && u2.thumbnailUrl.startsWith('http') ? u2.thumbnailUrl : (host + (u2.thumbnailUrl || u2.imageUrl || ''))
+              img.uploaded = true
+            } catch (reUpErr) {
+              console.warn('fallback re-upload failed', reUpErr)
+            }
+          }
+        } else {
+          // verify backend actually attached images: query grouped attachments for this itemId
+          try {
+            const grouped = await ApiHelper.get('/image/manage/grouped', { moduleType: 'ITEM', recordId: itemId })
+            if (grouped && grouped.code === 1 && grouped.data) {
+              const serverImages = Array.isArray(grouped.data.ITEM_IMAGE) ? grouped.data.ITEM_IMAGE : []
+              const localCount = itemImages.value.filter(i => i.localPath || i.uploaded).length
+              if (serverImages.length < localCount) {
+                console.warn('reassignReportedSuccess but server shows fewer images than client expects, performing fallback reupload', { serverImages: serverImages.length, localCount })
+                const fallbackUploadId = Number(itemId)
+                for (const img of itemImages.value) {
+                  const src = img.localPath || (img.imageUrl && img.imageUrl.startsWith('/') ? img.imageUrl : null)
+                  if (!src) continue
+                  try {
+                    const u2 = await uploadImage(src, fallbackUploadId, null)
+                    img.id = u2.id
+                    const host = ApiHelper.getHost()
+                    img.imageUrl = u2.imageUrl && u2.imageUrl.startsWith('http') ? u2.imageUrl : (host + (u2.imageUrl || ''))
+                    img.thumbnailUrl = u2.thumbnailUrl && u2.thumbnailUrl.startsWith('http') ? u2.thumbnailUrl : (host + (u2.thumbnailUrl || u2.imageUrl || ''))
+                    img.uploaded = true
+                  } catch (reUpErr) {
+                    console.warn('fallback re-upload failed', reUpErr)
+                  }
+                }
+              }
+            }
+          } catch (verifyErr) {
+            console.warn('verify grouped attachments failed', verifyErr)
+          }
+        }
       } catch (bindErr) {
         console.warn('reassign attachments by tempKey failed (non-fatal)', bindErr)
+        // fallback re-upload as above
+        const fallbackUploadId = Number(itemId)
+        for (const img of itemImages.value) {
+          const src = img.localPath || (img.imageUrl && img.imageUrl.startsWith('/') ? img.imageUrl : null)
+          if (!src) continue
+          try {
+            const u2 = await uploadImage(src, fallbackUploadId, null)
+            img.id = u2.id
+            const host = ApiHelper.getHost()
+            img.imageUrl = u2.imageUrl && u2.imageUrl.startsWith('http') ? u2.imageUrl : (host + (u2.imageUrl || ''))
+            img.thumbnailUrl = u2.thumbnailUrl && u2.thumbnailUrl.startsWith('http') ? u2.thumbnailUrl : (host + (u2.thumbnailUrl || u2.imageUrl || ''))
+            img.uploaded = true
+          } catch (reUpErr) {
+            console.warn('fallback re-upload failed', reUpErr)
+          }
+        }
       }
-      // Note: backend may not provide /image/manage/reassign; helper already skips in that case.
+      // Note: backend may not provide /image/manage/reassign; helper already handles fallbacks.
     }
 
     uni.hideLoading()
@@ -349,6 +437,32 @@ async function handleSubmitFromService() {
     uni.hideLoading()
     uni.showToast({ title: '提交失败: ' + (e?.message || ''), icon: 'none' })
   } finally { isSaving.value = false }
+}
+
+// Debug helper: query attachments by tempKey and by recordId and show results
+async function debugAttachments() {
+  try {
+    const tk = item.value.tempKey || ''
+    const id = item.value.itemId || null
+    console.debug('[debugAttachments] tempKey, itemId', tk, id)
+    if (tk) {
+      const r1 = await ApiHelper.get('/image/manage/by-tempkey', { moduleType: 'ITEM', tempKey: tk })
+      console.log('by-tempkey', r1)
+      try { uni.showModal({ title: 'by-tempkey', content: JSON.stringify(r1, null, 2).slice(0, 2000), showCancel: false }) } catch(e){}
+    } else {
+      console.log('debugAttachments: no tempKey present')
+    }
+    if (id) {
+      const r2 = await ApiHelper.get('/image/manage/by-record', { moduleType: 'ITEM', recordId: id })
+      console.log('by-record', r2)
+      try { uni.showModal({ title: 'by-record', content: JSON.stringify(r2, null, 2).slice(0, 2000), showCancel: false }) } catch(e){}
+    } else {
+      console.log('debugAttachments: no itemId present')
+    }
+  } catch (err) {
+    console.warn('debugAttachments failed', err)
+    try { uni.showToast({ title: 'debug failed: ' + (err?.message||''), icon: 'none' }) } catch(e){}
+  }
 }
 
 function handleNext() {
