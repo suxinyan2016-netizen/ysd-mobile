@@ -133,14 +133,45 @@ export default {
           zipcode: user.zipcode,
           email: user.email
         }
+        // If user provided a new password, call dedicated change-password endpoint first
         if (newPassword.value) {
-          payload.oldPassword = oldPassword.value
-          payload.password = newPassword.value
+          try {
+            const changeRes = await new Promise((resolve, reject) => {
+              try {
+                uni.request({
+                  url: ApiHelper.baseUrl + `/users/${user.userId}/change-password`,
+                  method: 'PUT',
+                  data: { oldPassword: oldPassword.value, newPassword: newPassword.value },
+                  header: Object.assign({ 'Content-Type': 'application/json' }, ApiHelper.getAuthHeaders()),
+                  success: (r) => resolve(r),
+                  fail: (e) => reject(e)
+                })
+              } catch (e) { reject(e) }
+            })
+
+            // If backend throws RuntimeException for wrong old password it may return HTTP 500
+            if (changeRes && changeRes.statusCode === 500) {
+              uni.showToast({ title: '旧密码错误', icon: 'none' })
+              return
+            }
+
+            // prefer explicit success code from backend body when available
+            if (!(changeRes && changeRes.data && (changeRes.data.code === 1 || changeRes.statusCode === 200))) {
+              const msg = (changeRes && changeRes.data && (changeRes.data.msg || changeRes.data.message)) || '修改密码失败'
+              uni.showToast({ title: msg, icon: 'none' })
+              return
+            }
+          } catch (err) {
+            // network or unexpected error
+            console.error('change-password error:', err)
+            uni.showToast({ title: '修改密码失败', icon: 'none' })
+            return
+          }
         }
 
         // attempt API update, fall back to local update on failure
         try {
-          // backend expects PUT /api/users to update
+          // backend expects PUT /api/users to update non-sensitive profile fields
           const res = await ApiHelper.put('/users', payload)
           if (res && res.code === 1) {
             uni.showToast({ title: '保存成功', icon: 'success' })
@@ -157,8 +188,8 @@ export default {
         try {
           const stored = uni.getStorageSync('loginUser')
           const sObj = stored ? JSON.parse(stored) : {}
+          // Do NOT store plaintext passwords locally. Only update non-sensitive profile fields.
           const updated = { ...sObj, username: user.username, name: user.name, phone: user.phone, address: user.address, zipcode: user.zipcode, email: user.email }
-          if (payload.password) updated.password = payload.password
           uni.setStorageSync('loginUser', JSON.stringify(updated))
         } catch (e) {
           console.error('update local storage error', e)
@@ -166,6 +197,10 @@ export default {
       } catch (e) {
         console.error('save profile error', e)
         uni.showToast({ title: '保存出错', icon: 'none' })
+      }
+      finally {
+        // clear password inputs after attempting save to avoid leaving sensitive data in memory/UI
+        try { oldPassword.value = ''; newPassword.value = ''; confirmPassword.value = '' } catch (e) {}
       }
     }
 

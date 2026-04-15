@@ -93,7 +93,6 @@ export default {
             userStore.token = token
             userStore.userInfo = user
             userStore.isLoggedIn = true
-            console.log('login: updated userStore', { user: userStore.userInfo })
           } catch (e) { console.warn('update userStore failed', e) }
           if (expiresIn) {
             const expiryTime = Date.now() + expiresIn * 1000
@@ -117,6 +116,8 @@ export default {
         uni.showToast({ title: '登录请求失败: ' + (err?.message || ''), icon: 'none' })
       } finally {
         this.loading = false
+        // immediately clear password variable in UI/state
+        try { this.password = '' } catch (e) {}
       }
     },
 

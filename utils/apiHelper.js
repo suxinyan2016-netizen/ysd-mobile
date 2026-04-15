@@ -35,7 +35,8 @@ export class ApiHelper {
             ...headers
           },
           success: async (res) => {
-            console.log(`API ${url} 响应:`, res.statusCode, res.data)
+            // only log non-sensitive metadata (avoid logging full response bodies)
+            console.log(`API ${url} 响应状态:`, res.statusCode)
             const body = res.data
 
             // Detect token invalid/expired responses across common patterns
@@ -69,7 +70,8 @@ export class ApiHelper {
                     ...retryHeaders
                   },
                   success: (retryRes) => {
-                    console.log(`API retry ${url} 响应:`, retryRes.statusCode, retryRes.data)
+                    // avoid logging retry response bodies
+                    console.log(`API retry ${url} 响应状态:`, retryRes.statusCode)
                     resolve(retryRes.data)
                   },
                   fail: (err2) => {

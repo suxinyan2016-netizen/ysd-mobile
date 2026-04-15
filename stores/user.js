@@ -60,6 +60,7 @@ export const useUserStore = defineStore('user', () => {
           ...headers
         },
         success: (res) => {
+          // avoid logging response bodies or request payloads
           console.log(`API ${url} 响应状态:`, res.statusCode)
           resolve(res.data)
         },
@@ -74,15 +75,13 @@ export const useUserStore = defineStore('user', () => {
   // 登录 - 完全独立
   async function login(username, password) {
     try {
-      console.log('开始登录:', username)
+      console.log('开始登录')
       
       // 清理旧数据
       clearLocalStorage()
       
       // 直接请求登录接口
       const result = await makeRequest('/login', 'POST', { username, password })
-      
-      console.log('登录响应:', result)
       
       if (result.code === 1 && result.data) {
         const { token: newToken, user, expiresIn, refreshToken, refreshExpiresIn } = result.data
@@ -106,7 +105,7 @@ export const useUserStore = defineStore('user', () => {
           uni.setStorageSync('refreshTokenExpiry', refreshExpiry.toString())
         }
         
-        console.log('登录成功:', user.name || user.username)
+        console.log('登录成功')
         return { success: true, data: result.data }
       } else {
         console.log('登录失败:', result.msg)
@@ -115,6 +114,9 @@ export const useUserStore = defineStore('user', () => {
     } catch (error) {
       console.error('登录过程出错:', error)
       return { success: false, message: error.message || '网络错误' }
+    } finally {
+      // clear local password variable as soon as possible to avoid lingering sensitive data
+      try { password = null } catch (e) {}
     }
   }
 
