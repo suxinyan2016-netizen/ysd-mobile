@@ -1,5 +1,16 @@
 import { ApiHelper } from '@/utils/apiHelper'
 
+// Helper to build application/x-www-form-urlencoded body without relying on URLSearchParams
+function toFormUrlEncoded(obj) {
+  if (!obj) return ''
+  return Object.keys(obj).map(key => {
+    const val = obj[key]
+    // treat null/undefined as empty string
+    const v = (val === null || typeof val === 'undefined') ? '' : String(val)
+    return encodeURIComponent(key) + '=' + encodeURIComponent(v)
+  }).join('&')
+}
+
 export function chooseFileFlexible({ count = 1, allowPdf = true } = {}) {
   return new Promise((resolve) => {
     function normalizeTempFiles(tempFiles) {
@@ -84,7 +95,7 @@ export async function reassignAttachments(moduleType, tempKey, recordId) {
     const payload = { moduleType, tempKey, newRecordId: recordId }
     console.debug('[reassignAttachments] calling reassign-by-tempkey', payload)
     // Spring controller expects request parameters; send as form-urlencoded
-    const form = new URLSearchParams(payload).toString()
+    const form = toFormUrlEncoded(payload)
     // include username header if available (backend requires it)
     let username = null
     try { const saved = uni.getStorageSync('loginUser'); if (saved) { const u = JSON.parse(saved); username = u?.name || u?.username || null } } catch (e) {}
@@ -94,7 +105,7 @@ export async function reassignAttachments(moduleType, tempKey, recordId) {
     // Fallback: try the reassign by oldRecordId endpoint (some deployments require uploadBy header)
     const fallbackPayload = { moduleType, oldRecordId: -1, newRecordId: recordId }
     console.debug('[reassignAttachments] fallback reassign', { fallbackPayload, headers })
-    const form2 = new URLSearchParams(fallbackPayload).toString()
+    const form2 = toFormUrlEncoded(fallbackPayload)
     const r2 = await ApiHelper.post('/image/manage/reassign', form2, Object.assign({ 'Content-Type': 'application/x-www-form-urlencoded' }, headers))
     return r2
   } catch (err) {
