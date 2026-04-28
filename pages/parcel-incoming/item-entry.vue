@@ -81,7 +81,7 @@
       <view class="action-btns">
         <button class="btn btn-default" @click="goBack">上一步</button>
         <button class="btn btn-save" :disabled="isSaving" @click="handleSave">保存</button>
-        <button v-if="route && route.query && route.query.debug === '1'" class="btn btn-debug" @click="debugAttachments">Debug</button>
+        
         <button class="btn btn-primary" :disabled="isSaving" @click="handleNext">下一步</button>
       </view>
       <!-- reusable modal component -->
@@ -259,8 +259,8 @@ async function handleSave() {
     const payload = {
       itemNo: item.value.itemNo,
       sellerPart: item.value.sellerPart,
-      // saved items should be marked as entered (0)
-      itemStatus: 0,
+      // saved items in the incoming-flow should be marked as received/entered (1)
+      itemStatus: 1,
       // additional fields
       dictId: item.value.dictId || null,
       qty: parseInt(item.value.qty, 10) || 1,
@@ -377,31 +377,7 @@ async function handleSave() {
   } finally { isSaving.value = false }
 }
 
-// Debug helper: query attachments by tempKey and by recordId and show results
-async function debugAttachments() {
-  try {
-    const tk = item.value.tempKey || ''
-    const id = item.value.itemId || null
-    console.debug('[debugAttachments] tempKey, itemId', tk, id)
-    if (tk) {
-      const r1 = await ApiHelper.get('/image/manage/by-tempkey', { moduleType: 'ITEM', tempKey: tk })
-      console.log('by-tempkey', r1)
-      try { uni.showModal({ title: 'by-tempkey', content: JSON.stringify(r1, null, 2).slice(0, 2000), showCancel: false }) } catch(e){}
-    } else {
-      console.log('debugAttachments: no tempKey present')
-    }
-    if (id) {
-      const r2 = await ApiHelper.get('/image/manage/by-record', { moduleType: 'ITEM', recordId: id })
-      console.log('by-record', r2)
-      try { uni.showModal({ title: 'by-record', content: JSON.stringify(r2, null, 2).slice(0, 2000), showCancel: false }) } catch(e){}
-    } else {
-      console.log('debugAttachments: no itemId present')
-    }
-  } catch (err) {
-    console.warn('debugAttachments failed', err)
-    try { uni.showToast({ title: 'debug failed: ' + (err?.message||''), icon: 'none' }) } catch(e){}
-  }
-}
+
 
 function handleNext() {
   // Do not auto-save on "下一步" — clear the form to enter a new item
