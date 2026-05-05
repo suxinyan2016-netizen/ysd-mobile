@@ -276,7 +276,7 @@ async function handleSave() {
       keeperId: userStore.userInfo?.id || (function(){ try { const s = uni.getStorageSync('loginUser'); return s? JSON.parse(s).id:null } catch(e){return null} })(),
       ownerId: ownerIdFromRoute && ownerIdFromRoute.value ? Number(ownerIdFromRoute.value) : (item.value.ownerId || null),
       ispaid: 0,
-      isconsigned: 0
+      isConsigned: 0
     }
 
     // determine create vs update
