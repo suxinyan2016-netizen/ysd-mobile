@@ -21,6 +21,15 @@ export class ApiHelper {
         if (h === 'localhost' || h === '127.0.0.1') return '/api'
       }
     } catch (e) {}
+
+    // If running in native runtime (HBuilder/uni-app 'plus' runtime),
+    // cloud-built APK should use production backend by default.
+    try {
+      if (typeof plus !== 'undefined') {
+        return 'http://38.55.193.176/api'
+      }
+    } catch (e) {}
+
     return 'http://10.0.0.221:8080/api'
   }
   // 通用请求方法
