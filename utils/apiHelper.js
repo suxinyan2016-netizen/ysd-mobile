@@ -39,6 +39,8 @@ export class ApiHelper {
       const authHeaders = token ? { token } : {}
 
       const doRequest = () => {
+        // TEMP LOG: trace method and resolved URL to help diagnose incorrect GET/POST issues
+        try { console.log(`[ApiHelper] request -> method=${method} url=${this.baseUrl + url}`) } catch (e) {}
         uni.request({
           url: this.baseUrl + url,
           method,
