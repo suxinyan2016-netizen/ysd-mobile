@@ -9,6 +9,11 @@ export class ApiHelper {
         const _meta = import.meta
         const base = _meta && _meta.env && (_meta.env.VITE_API_BASE || _meta.env.VUE_APP_API_BASE)
         if (base) return base
+        // If this is a production build but env var wasn't provided by the builder,
+        // fall back to the known production API host to avoid pointing to localhost.
+        if (_meta && _meta.env && _meta.env.PROD) {
+          return 'http://38.55.193.176/api'
+        }
     } catch (e) {}
     try {
       if (typeof window !== 'undefined' && window.location && window.location.hostname) {
