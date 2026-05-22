@@ -27,7 +27,9 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src')
+      // Project uses `@/...` imports for files at the repository root (pages/, components/, static/, etc.).
+      // Map `@` to the project root so `@/static/common.scss` and similar imports resolve correctly.
+      '@': path.resolve(__dirname, './')
     },
     extensions: ['.js', '.ts', '.jsx', '.tsx', '.vue', '.json']
   },

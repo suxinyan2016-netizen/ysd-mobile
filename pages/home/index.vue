@@ -9,11 +9,11 @@
       </view>
       <view class="title">PacItem</view>
       <view class="right">
-        <button class="logout-btn" @click="handleLogout">退出</button>
+        <button class="logout-btn" @click="handleLogout">Logout</button>
       </view>
     </view>
 
-    <scroll-view class="content" scroll-y="true">
+    <scroll-view class="content" scroll-y="true" style="padding-top:0px !important;">
       <view class="welcome">
         <text class="h1">欢迎，{{ userName || '用户' }}</text>
         
@@ -39,11 +39,11 @@
         <view class="card">
           <view class="card-title">待结算费用</view>
           <view class="card-body two-col" :style="{ flexDirection: 'row' }">
-            <view class="col" @click="goToPendingReceive">
+            <view class="col" @click="goToReceivables">
               <text class="label">应收款总计</text>
               <text class="num num-receive">{{ formatMoney(pendingSettlement.pendingReceive) }}</text>
             </view>
-            <view class="col" @click="goToPendingSend">
+            <view class="col" @click="goToPayables">
               <text class="label">应付款总计</text>
               <text class="num num-pay">{{ formatMoney(pendingSettlement.pendingPay) }}</text>
             </view>
@@ -211,11 +211,11 @@ export default {
       if (id) fetchStats(id)
     })
 
-    // Also watch for userInfo changes (e.g. after login) and fetch when available
+    // Also watch for userInfo changes (e.g. after login when userInfo was null on mount)
     watch(() => userStore.userInfo, (newUser) => {
-      console.log('home: userStore.userInfo changed', newUser)
       const id = (newUser && (newUser.userId || newUser.id || newUser.userID)) || ''
-      if (id) fetchStats(id)
+      // only fetch if we don't have stats yet (avoids double-call when userInfo is already set)
+      if (id && !stats.value.pendingParcels) fetchStats(id)
     })
 
     const handleLogout = async () => {
@@ -252,6 +252,22 @@ export default {
       }
     }
 
+    const goToReceivables = () => {
+      try {
+        uni.navigateTo({ url: '/pages/account/receivables' })
+      } catch (e) {
+        console.warn('navigate to receivables failed', e)
+      }
+    }
+
+    const goToPayables = () => {
+      try {
+        uni.navigateTo({ url: '/pages/account/payables' })
+      } catch (e) {
+        console.warn('navigate to payables failed', e)
+      }
+    }
+
     return {
       userName,
       avatar,
@@ -270,6 +286,9 @@ export default {
       formatMoney,
       goToPendingReceive,
       goToPendingSend
+      ,
+      goToReceivables,
+      goToPayables
     }
   }
 }
@@ -277,20 +296,28 @@ export default {
 
 <style lang="scss" scoped>
 .page { height: 100vh; display:flex; flex-direction:column; background:#F8F8F8 }
-.topbar { height:88rpx !important; min-height:88rpx !important; background:#082567; color:#fff; display:flex; align-items:center; justify-content:center; position:relative; z-index:999; box-sizing:border-box }
-.title { color:#fff; font-size:34rpx; font-weight:700 }
+.topbar {
+  /* smaller topbar for home to reduce whitespace while keeping safe-area */
+  padding-top: constant(safe-area-inset-top) !important;
+  padding-top: env(safe-area-inset-top, 4rpx) !important;
+  padding-bottom: 4rpx !important;
+  height: calc(64rpx + env(safe-area-inset-top, 4rpx)) !important;
+  min-height: calc(64rpx + env(safe-area-inset-top, 4rpx)) !important;
+  background:#082567; color:#fff; display:flex; align-items:center; justify-content:center; position:relative; z-index:999; box-sizing:border-box;
+}
+.title { color:#fff; font-size:34rpx; font-weight:700; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) }
 .back { position:absolute; left:12rpx; top:50%; transform:translateY(-50%) }
 .back-icon { width:56rpx; height:56rpx; background:rgba(255,255,255,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6rpx 16rpx rgba(0,0,0,0.18) }
-.back-icon svg { width:32rpx; height:32rpx }
-.topbar .left { position:absolute; left:12rpx; display:flex; align-items:center }
-.topbar .right { position:absolute; right:12rpx; display:flex; align-items:center }
-.avatar-wrap { display:flex; align-items:center; height:100% }
-.avatar { width:56rpx; height:56rpx; border-radius:50%; margin-right:12rpx; align-self:center }
-.username { color:#fff; font-size:28rpx; margin-right:12rpx }
-.logout-btn { background:transparent; color:#fff; border:1rpx solid rgba(255,255,255,0.2); padding:8rpx 14rpx; border-radius:8rpx; font-size:12px }
-.content { flex:1; padding-bottom: 140rpx; padding-top: 12rpx }
-.welcome { padding:30rpx }
-.h1 { font-size:36rpx; font-weight:700; color:#333 }
+.back-chevron{ width:18rpx; height:18rpx; border-top:4rpx solid #fff; border-left:4rpx solid #fff; transform:rotate(-45deg); margin-left:8rpx; box-sizing:border-box }
+.topbar .left { position:absolute; left:12rpx; top:50%; transform:translateY(-50%); display:flex; align-items:center }
+.topbar .right { position:absolute; right:12rpx; top:50%; transform:translateY(-50%); display:flex; align-items:center }
+.avatar-wrap { display:flex; align-items:center }
+.avatar { width:48rpx; height:48rpx; border-radius:50%; margin-right:10rpx }
+.username { color:#fff; font-size:24rpx; margin-right:10rpx; line-height:1 }
+.logout-btn { background:transparent; color:#fff; border:1rpx solid rgba(255,255,255,0.2); padding:6rpx 11rpx; border-radius:8rpx; font-size:10px; position:relative; top:2rpx }
+.content { flex:1; padding-bottom: 140rpx; padding-top: 0 !important; margin-top: 30rpx !important; }
+.welcome { padding:0 30rpx; margin-top: -10rpx }
+.h1 { font-size:36rpx; font-weight:700; color:#333; margin-top:0 }
 .p { margin-top:12rpx; color:#666 }
 
 /* Stats cards */
@@ -300,12 +327,13 @@ export default {
 .card-body { display:flex; flex-direction:column }
 .card-body.two-col { display:flex; flex-direction:row; flex-wrap:nowrap; align-items:center; justify-content:space-between; gap:12rpx }
 .card-body.two-col .col { flex:0 0 48%; min-width:0; align-items:center }
-.card-body.two-col .label, .card-body.two-col .num { width:100%; text-align:center }
+.card-body.two-col .label, .card-body.two-col .num { display:block; width:100%; text-align:center; align-self:center }
+.card-body.two-col .label { display:flex; justify-content:center; align-items:center; text-align:center !important; margin:0 auto !important }
 .stat-row { display:flex; justify-content:space-between; align-items:center; padding:10rpx 0; border-bottom:1rpx solid #f0f0f0 }
 .stat-row:last-child { border-bottom:0 }
 .label { color:#666; font-size:22rpx }
 .value { color:#222; font-size:24rpx; font-weight:700 }
-.section-sub { color:#999; font-size:20rpx; margin-top:4rpx; margin-bottom:4rpx }
+.section-sub { color:#999; font-size:26rpx; margin-top:4rpx; margin-bottom:4rpx }
 .inline-grid { display:flex; gap:8rpx; margin-top:6rpx; flex-wrap:wrap; }
 .inline-grid .col { flex:0 0 48%; min-width:0; background:#fafafa; border-radius:8rpx; padding:8rpx; display:flex; flex-direction:column; align-items:center; margin-bottom:8rpx }
 .grid { display:flex; flex-wrap:wrap; gap:12rpx; margin-top:8rpx }
@@ -321,4 +349,7 @@ export default {
 .inline-grid { display:flex; gap:12rpx; margin-top:8rpx; flex-wrap:wrap; }
 .inline-grid .col { flex:0 0 48%; min-width:0; background:#fafafa; border-radius:8rpx; padding:14rpx; display:flex; flex-direction:column; align-items:center; margin-bottom:12rpx }
 .center { text-align:center }
+
+/* Ensure two-column card columns center their label and number */
+.card .card-body.two-col .col { flex:0 0 48%; min-width:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:14rpx 0; box-sizing:border-box }
 </style>

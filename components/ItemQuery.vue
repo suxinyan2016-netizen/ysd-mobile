@@ -3,9 +3,7 @@
     <view class="topbar">
       <view class="back" @click="goBack">
         <view class="back-icon">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M15.5 5.5L9 12l6.5 6.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-          </svg>
+          <view class="back-chevron"></view>
         </view>
       </view>
       <view class="title">{{ title }}</view>
@@ -73,7 +71,7 @@
               <button class="btn primary header-btn" @click.stop="openSplit">拆分</button>
             </view>
             <view class="close" @click="closeDetail">
-              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6 L18 18 M6 18 L18 6" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+              <text class="close-x">✕</text>
             </view>
           </view>
         </view>
@@ -128,7 +126,7 @@
           <view class="drawer-header">
             <text class="drawer-title">拆分商品</text>
             <view class="close" @click="showSplit=false">
-              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6 L18 18 M6 18 L18 6" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+              <text class="close-x">✕</text>
             </view>
           </view>
           <view class="more-row split-row">
@@ -149,9 +147,9 @@
       <view class="more-drawer">
         <view class="drawer-header">
           <text class="drawer-title">更多筛选</text>
-          <view class="close" @click="closeMore">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6 L18 18 M6 18 L18 6" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-          </view>
+            <view class="close" @click="closeMore">
+              <text class="close-x">✕</text>
+            </view>
         </view>
         <view class="more-row"><text class="label">商品号</text><input v-model="filter_itemNo" placeholder="请输入商品号" /></view>
         <view class="more-row"><text class="label">商品名</text><input v-model="filter_sellerPart" placeholder="请输入商品名" /></view>
@@ -214,7 +212,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import ModalPicker from '@/components/ModalPicker.vue'
 import { splitItem } from '@/utils/itemSplit'
 import { ApiHelper } from '@/utils/apiHelper'
@@ -403,7 +401,26 @@ function mapImageLabel(type){
 function previewImages(index){
   if (!Array.isArray(itemImages.value) || itemImages.value.length === 0) return
   const imgs = itemImages.value.map(i => i.imageUrl || i.fileUrl || '')
-  openImageViewer(imgs, index || 0)
+  const curIndex = Number(index) || 0
+  // If running on a real device / native runtime, prefer uni.previewImage as an immediate fallback
+  try{
+    if (typeof uni !== 'undefined' && typeof uni.previewImage === 'function'){
+      // If global viewer DOM not present (or running in native app), call native preview directly
+      let useNative = true
+      try{
+        if (typeof document !== 'undefined'){
+          const el = document.querySelector('.global-image-viewer')
+          if (el) useNative = false
+        }
+      }catch(e){ /* ignore */ }
+      if (useNative){
+        uni.previewImage({ urls: imgs, current: imgs[curIndex] || imgs[0] })
+        return
+      }
+    }
+  }catch(e){ /* ignore and fallback to openImageViewer */ }
+
+  openImageViewer(imgs, curIndex)
 }
 
 function getCurrentUserId(){
@@ -688,33 +705,40 @@ async function openDetail(row){
 
 function closeDetail(){ showDetail.value = false; sel.value = {}; itemImages.value = [] }
 
+function _onFocus() {
+  page.value = 1
+  if (props.inspect) doInspectSearch()
+  else doSearch()
+}
+
 onMounted(() => {
   page.value = 1
   if (props.inspect) doInspectSearch()
   else doSearch()
 
-  if (typeof window !== 'undefined' && window.addEventListener) {
-    window.addEventListener('focus', () => {
-      page.value = 1
-      if (props.inspect) doInspectSearch()
-      else doSearch()
-    })
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('focus', _onFocus)
+    window.addEventListener('focus', _onFocus)
   }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') window.removeEventListener('focus', _onFocus)
 })
 </script>
 
 <style scoped>
-.page-container{ height:100vh; display:flex; flex-direction:column; background:#f8f8f8; padding-top:88rpx }
-.topbar{ height:88rpx; background:#082567; color:#fff; display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; right:0; z-index:999 }
+.page-container{ height:100vh; display:flex; flex-direction:column; background:#f8f8f8; padding-top:calc(64rpx + env(safe-area-inset-top, 4rpx)) }
+.topbar{ height:calc(64rpx + env(safe-area-inset-top, 4rpx)); padding-top:env(safe-area-inset-top, 4rpx); background:#082567; color:#fff; display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; right:0; z-index:2000 }
 .title{ color:#fff; font-size:34rpx; font-weight:700 }
-.back{ position:absolute; left:12rpx; top:50%; transform:translateY(-50%) }
+.back{ position:absolute; left:12rpx; bottom:12rpx; top:auto; transform:none }
 .back-icon{ width:56rpx; height:56rpx; background:rgba(255,255,255,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6rpx 16rpx rgba(0,0,0,0.18) }
-.back-icon svg{ width:32rpx; height:32rpx }
+.back-chevron{ width:18rpx; height:18rpx; border-top:4rpx solid #fff; border-left:4rpx solid #fff; transform:rotate(-45deg); margin-left:8rpx; box-sizing:border-box }
 .search-bar{ display:flex; align-items:center; padding:20rpx; background:#fff; margin-top:0 }
 .search-input{ flex:1; display:flex; align-items:center; background:#f5f5f5; border-radius:40rpx; padding:0 30rpx; height:70rpx; margin-right:16rpx }
 .search-input input{ flex:1; font-size:24rpx }
-.search-btn { width: 105rpx; height: 60rpx; line-height: 60rpx; text-align: center; background: linear-gradient(90deg, #409EFF, #66B1FF); color: #fff; border-radius: 8rpx; font-size: 20rpx; font-weight: 400; padding: 0 16rpx; display: flex; align-items: center; justify-content: center; box-shadow: 0 6rpx 18rpx rgba(64,158,255,0.12); border: none; margin-right: 8rpx; }
-.more-btn { width: 105rpx; height: 60rpx; line-height: 60rpx; text-align: center; background: linear-gradient(90deg, #409EFF, #66B1FF); color: #fff; border-radius: 8rpx; font-size: 20rpx; font-weight: 400; padding: 0 16rpx; display: flex; align-items: center; justify-content: center; box-shadow: 0 6rpx 18rpx rgba(64,158,255,0.12); border: none; }
+  .search-btn { width: 105rpx; height: 60rpx; line-height: 60rpx; text-align: center; background: linear-gradient(90deg, #409EFF, #66B1FF); color: #fff; border-radius: 8rpx; font-size: 26rpx !important; font-weight: 400; padding: 0 16rpx; display: flex; align-items: center; justify-content: center; box-shadow: 0 6rpx 18rpx rgba(64,158,255,0.12); border: none; margin-right: 8rpx; }
+.more-btn { width: 105rpx; height: 60rpx; line-height: 60rpx; text-align: center; background: linear-gradient(90deg, #409EFF, #66B1FF); color: #fff; border-radius: 8rpx; font-size: 26rpx; font-weight: 400; padding: 0 16rpx; display: flex; align-items: center; justify-content: center; box-shadow: 0 6rpx 18rpx rgba(64,158,255,0.12); border: none; }
  .inspect-btn { width:60rpx; height:60rpx; display:flex; align-items:center; justify-content:center; border-radius:8rpx; margin-right:8rpx; background: linear-gradient(90deg,#409EFF,#66B1FF); border:none; box-shadow:0 6rpx 18rpx rgba(64,158,255,0.12) }
  .inspect-btn svg{ width:28rpx; height:28rpx }
 .result-list{ flex:1; padding:20rpx }
@@ -746,19 +770,19 @@ onMounted(() => {
   .pager{ display:flex; align-items:center; justify-content:center; gap:24rpx; margin-top:12rpx }
   .pager-btn{ display:flex; align-items:center; gap:10rpx; padding:10rpx 18rpx; background:#fff; border-radius:12rpx; box-shadow:0 8rpx 18rpx rgba(0,0,0,0.06); cursor:pointer }
   .pager-btn svg{ width:28rpx; height:28rpx }
-  .pager-btn .btn-text{ font-size:26rpx; color:#409EFF }
+  .pager-btn .btn-text{ font-size:26rpx !important; color:#409EFF }
   .pager-btn.primary{ background: linear-gradient(90deg,#409EFF,#66B1FF); color:#fff }
   .pager-btn.primary .btn-text{ color:#fff }
   .pager-btn.disabled{ opacity:0.45; pointer-events:none; box-shadow:none }
 
 /* drawer + more styles */
-.drawer-overlay{ position:fixed; left:0; right:0; top:0; bottom:0; background:rgba(0,0,0,0.35); display:flex; align-items:flex-end; justify-content:center; z-index:2000 }
-.drawer{ width:100%; background:#fff; border-top-left-radius:16rpx; border-top-right-radius:16rpx; padding:20rpx }
-.drawer-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12rpx }
-.drawer-title{ font-size:28rpx; font-weight:600 }
-.drawer-content{ max-height:60vh; overflow:auto }
-.drawer-header .close{ width:52rpx; height:52rpx; display:flex; align-items:center; justify-content:center; border-radius:50%; background:#f5f5f5; cursor:pointer }
-.drawer-header .close svg{ width:26rpx; height:26rpx }
+.drawer-overlay{ position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.4); display:flex; align-items:flex-end; z-index:9999 }
+.drawer{ width:100%; max-height:82%; background:#fff; border-top-left-radius:16rpx; border-top-right-radius:16rpx; padding:0; display:flex; flex-direction:column; overflow:hidden }
+.drawer-header{ display:flex; justify-content:space-between; align-items:center; padding:20rpx 24rpx; border-bottom:1rpx solid #f0f0f0; background:#fff; box-shadow:0 6rpx 14rpx rgba(0,0,0,0.04); z-index:12 }
+.drawer-title{ font-size:26rpx; font-weight:700 }
+.drawer-content{ overflow:auto; flex:1; padding:16rpx 24rpx 24rpx }
+.close{ width:56rpx; height:56rpx; border-radius:28rpx; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.04); cursor:pointer; box-shadow:0 6rpx 14rpx rgba(0,0,0,0.06); }
+.close-x{ font-size:34rpx; color:#333; line-height:1; text-align:center; display:block }
 .drawer-actions{ display:flex; align-items:center; gap:24rpx }
 .header-btn{ padding:8rpx 14rpx; height:56rpx; min-width:120rpx; display:flex; align-items:center; justify-content:center; background: linear-gradient(90deg,#409EFF,#66B1FF); color:#fff; border:none; border-radius:8rpx; box-shadow: 0 6rpx 18rpx rgba(64,158,255,0.12); font-size:22rpx }
 .action-group{ display:flex; gap:12rpx; align-items:center }
@@ -773,7 +797,7 @@ onMounted(() => {
   .more-drawer .drawer-header{ display:flex; justify-content:space-between; align-items:center; padding-bottom:12rpx }
   .more-drawer .drawer-title{ font-size:26rpx; font-weight:700 }
   .more-drawer .close{ width:44rpx; height:44rpx; display:flex; align-items:center; justify-content:center; border-radius:50%; background:#f5f5f5; cursor:pointer }
-  .more-drawer .close svg{ width:22rpx; height:22rpx }
+  .more-drawer .close .close-x{ font-size:28rpx; color:#333; line-height:1; display:block }
 .more-row{ display:flex; align-items:center; justify-content:space-between; padding:12rpx 0; border-bottom:1rpx solid #f6f6f6 }
 .more-row .label{ color:#666 }
 .more-row input{ font-size:22rpx }
@@ -812,4 +836,11 @@ onMounted(() => {
 .viewer-close{ position:absolute; top:28rpx; right:24rpx; width:88rpx; height:88rpx; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.45); border-radius:44rpx; box-shadow:0 6rpx 18rpx rgba(0,0,0,0.4) }
 .viewer-close-icon{ width:40rpx; height:40rpx }
 .blocked{ pointer-events:none }
+
+/* ensure close icon size and fallback match parcel-query styling */
+.close{ width:56rpx; height:56rpx; border-radius:28rpx; position:relative; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.04); cursor:pointer; box-shadow:0 6rpx 14rpx rgba(0,0,0,0.06); }
+.close svg{ width:28rpx !important; height:28rpx !important; display:block; margin:0 auto }
+.drawer-header .close svg{ width:28rpx !important; height:28rpx !important }
+.more-drawer .close svg{ width:22rpx !important; height:22rpx !important }
+.close .close-x{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font-size:34rpx; color:#333; line-height:1; text-align:center; pointer-events:none }
 </style>

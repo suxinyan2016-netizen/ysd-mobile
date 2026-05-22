@@ -136,15 +136,15 @@ $uni-font-size-paragraph:15px;
 }
 
 .label {
-	font-size: 20rpx;
+	font-size: 26rpx !important;
 	color: #333;
-	text-align: center;
+	text-align: left !important;
 }
 
 @media (max-width: 480px) {
 	.icon-card { width:170rpx; height:140rpx }
 	.icon { font-size:44rpx }
-	.label { font-size:16rpx }
+	.label { font-size:26rpx !important }
 }
 
 /* parcel-home page controls layout only; sizes inherit from globals above */

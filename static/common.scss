@@ -45,3 +45,92 @@ page {
 .p-10 { padding: 10rpx; }
 .p-20 { padding: 20rpx; }
 .p-30 { padding: 30rpx; }
+
+/* Global topbar safe-area support: add top padding for devices with notches/status bars */
+.topbar {
+  /* keep existing visual height but allow additional safe-area inset on top */
+  /* force topbar to grow when safe-area inset exists even if page styles set fixed height */
+  padding-top: constant(safe-area-inset-top) !important;
+  padding-top: env(safe-area-inset-top, 4rpx) !important;
+  height: calc(64rpx + env(safe-area-inset-top, 4rpx)) !important;
+  min-height: calc(64rpx + env(safe-area-inset-top, 4rpx)) !important;
+  box-sizing: border-box !important;
+}
+
+/* ensure absolutely-positioned controls remain vertically centered within the (expanded) topbar */
+.topbar .back, .topbar .right, .topbar .left {
+  /* Position control containers a fixed distance above the bottom of the blue bar so
+     they aren't flush with the bottom edge. This keeps avatar/username/logout visually
+     separated from the blue bottom edge while the overall topbar still includes the safe-area inset. */
+  top: auto !important;
+  bottom: 12rpx !important;
+  height: auto !important;
+  padding-top: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  transform: none !important;
+}
+
+/* Center title horizontally and align it above the bottom by the same gap */
+.topbar .title {
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  bottom: 12rpx !important;
+}
+
+/* Ensure page content is pushed below the (increased) topbar height so the topbar's bottom edge
+   does not overlap content. Many pages use a wrapper `.page` with a `.content` scroll area. */
+.page > .content,
+.page .content {
+  /* Offset page content by the visible topbar height (use smaller fallback) */
+  padding-top: calc(64rpx + env(safe-area-inset-top, 4rpx)) !important;
+}
+
+/* Fallback for pages that place .content directly after .topbar without .page wrapper */
+.topbar + .content {
+  margin-top: calc(64rpx + env(safe-area-inset-top, 4rpx)) !important;
+}
+
+/* Ensure buttons and pager controls vertically center their text/icons across the app */
+button, .btn, .pager-btn, .pager-btn > *, .btn-text {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: normal !important;
+}
+
+/* Pager button: center the label regardless of icon order
+   - make the button a positioned container
+   - absolutely center the text label
+   - position the svg arrow to left/right so it doesn't affect centering
+*/
+.pager-btn {
+  position: relative !important;
+  /* larger horizontal size so label is always visible on narrow devices */
+  min-width: 220rpx !important;
+  padding: 16rpx 36rpx !important;
+  min-height: 72rpx !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: visible !important;
+  border-radius: 12rpx !important;
+}
+.pager-btn .btn-text {
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  margin: 0 !important;
+}
+.pager-btn svg {
+  position: absolute !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 28rpx !important;
+  height: 28rpx !important;
+}
+.pager-btn:first-child svg { left: 18rpx !important; z-index: 1 !important; }
+.pager-btn:last-child svg { right: 18rpx !important; left: auto !important; z-index: 1 !important; }
+.pager-btn .btn-text { z-index: 2 !important; white-space: nowrap !important; font-size: 26rpx !important; }

@@ -11,6 +11,17 @@ export function openImageViewer(images = [], index = 0) {
   state.images = images
   state.index = index || 0
   state.visible = true
+  // If running in a native runtime (no document), call native preview immediately.
+  try{
+    if (typeof document === 'undefined'){
+      if (typeof uni !== 'undefined' && typeof uni.previewImage === 'function'){
+        console.warn('[imageViewer] no document (native runtime) — using uni.previewImage fallback')
+        uni.previewImage({ urls: images, current: index || 0 })
+        return
+      }
+    }
+  }catch(e){ console.warn('[imageViewer] native preview check failed', e) }
+
   // Fallback for environments where the global component didn't mount or is not visible:
   // after a short delay, if the global viewer DOM isn't present, call native/web preview.
   setTimeout(() => {

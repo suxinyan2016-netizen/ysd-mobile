@@ -3,9 +3,7 @@
     <view class="topbar">
       <view class="back" @click="goBack">
         <view class="back-icon">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M15.5 5.5L9 12l6.5 6.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-          </svg>
+          <view class="back-chevron"></view>
         </view>
       </view>
       <view class="title">商品查询</view>
@@ -110,7 +108,7 @@ function openRepair(){
 .topbar .title{ color:#fff; font-size:34rpx; font-weight:700 }
   .topbar .back{ position:absolute; left:20rpx; top:0; bottom:0; display:flex; align-items:center; justify-content:center; width:88rpx }
   .topbar .back-icon{ width:36rpx; height:36rpx; display:flex; align-items:center; justify-content:center }
-  .topbar .back-icon svg{ width:36rpx; height:36rpx }
+  .back-chevron{ width:12rpx; height:12rpx; border-top:3rpx solid #fff; border-left:3rpx solid #fff; transform:rotate(-45deg); margin-left:6rpx; box-sizing:border-box }
 .page-container{ height:100vh; display:flex; flex-direction:column; background:#f8f8f8; padding-top:88rpx }
 .topbar{ height:88rpx; background:#082567; color:#fff; display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; right:0; z-index:999 }
 .topbar .title{ color:#fff; font-size:34rpx; font-weight:700 }

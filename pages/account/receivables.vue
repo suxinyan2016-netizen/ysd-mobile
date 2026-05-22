@@ -3,9 +3,7 @@
     <view class="topbar">
       <view class="back" @click="smartBack()">
         <view class="back-icon">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M15.5 5.5L9 12l6.5 6.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-          </svg>
+          <view class="back-chevron"></view>
         </view>
       </view>
       <view class="title">我的应收</view>
@@ -61,7 +59,7 @@
           <text class="drawer-title">{{ dialogTitle }}</text>
           <view class="drawer-actions">
             <view class="close" @click="showItemDialog=false">
-              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6 L18 18 M6 18 L18 6" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+              <text class="close-x">✕</text>
             </view>
           </view>
         </view>
@@ -91,7 +89,7 @@
           <text class="drawer-title">{{ parcelDialogTitle }}</text>
           <view class="drawer-actions">
             <view class="close" @click="showParcelDialog=false">
-              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 6 L18 18 M6 18 L18 6" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+              <text class="close-x">✕</text>
             </view>
           </view>
         </view>
@@ -239,7 +237,7 @@ onMounted(() => load())
 .drawer-content .table-row{ border-bottom: none }
 .drawer-content .col.name{ font-weight:400 }
 .drawer-header .close{ width:52rpx; height:52rpx; display:flex; align-items:center; justify-content:center; border-radius:50%; background:#f5f5f5 }
-.drawer-header .close svg{ width:26rpx; height:26rpx }
+.drawer-header .close .close-x{ font-size:30rpx; color:#666; line-height:1; display:block }
 .drawer-actions{ display:flex; align-items:center; gap:24rpx }
 .drawer-footer{ display:flex; justify-content:flex-end; gap:12rpx; padding-top:12rpx }
 .summary-row{ display:flex; align-items:center; padding-top:8rpx }
@@ -247,7 +245,7 @@ onMounted(() => load())
 
 .back{ position:absolute; left:12rpx; top:50%; transform:translateY(-50%) }
 .back-icon{ width:56rpx; height:56rpx; background:rgba(255,255,255,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6rpx 16rpx rgba(0,0,0,0.18) }
-.back-icon svg{ width:32rpx; height:32rpx }
+.back-chevron{ width:18rpx; height:18rpx; border-top:4rpx solid #fff; border-left:4rpx solid #fff; transform:rotate(-45deg); margin-left:8rpx; box-sizing:border-box }
 
 /* Card / table styles to match web layout */
 .card{ background:#fff; border-radius:6rpx; padding:20rpx; margin-bottom:20rpx; box-shadow:0 2rpx 6rpx rgba(0,0,0,0.03) }

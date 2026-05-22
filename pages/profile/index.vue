@@ -3,9 +3,7 @@
     <view class="topbar">
       <view class="back" @click="goHome">
         <view class="back-icon">
-          <svg class="back-svg" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M15.5 5.5L9 12l6.5 6.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-          </svg>
+          <view class="back-chevron"></view>
         </view>
       </view>
       <view class="title">个人资料</view>
@@ -215,7 +213,7 @@ export default {
 .title { color:#fff; font-size:34rpx; font-weight:700 }
 .back { position:absolute; left:12rpx; top:50%; transform:translateY(-50%) }
 .back-icon { width:56rpx; height:56rpx; background:rgba(255,255,255,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6rpx 16rpx rgba(0,0,0,0.18) }
-.back-icon svg, .back-svg { width:32rpx; height:32rpx }
+.back-chevron{ width:18rpx; height:18rpx; border-top:4rpx solid #fff; border-left:4rpx solid #fff; transform:rotate(-45deg); margin-left:8rpx; box-sizing:border-box }
 .right-top { position:absolute; right:18rpx }
 .logout-top { color:#fff; font-size:24rpx }
 .content { padding:24rpx }
@@ -226,12 +224,12 @@ export default {
 .form { width:100% }
 .row { display:flex; align-items:center; margin-bottom:16rpx }
 .row.full { align-items:flex-start }
-.label { width:120rpx; color:#333 }
+  .label { width:120rpx; color:#333; font-size:26rpx !important }
 .input { flex:1; height:64rpx; padding:10rpx; border-radius:8rpx; border:1rpx solid #e6e6e6; background:#fff }
 .textarea { flex:1; min-height:88rpx; height:88rpx; padding:10rpx; border-radius:8rpx; border:1rpx solid #e6e6e6; background:#fff }
 .sep { margin:12rpx 0; color:#666 }
 .buttons { margin-top:22rpx }
-.btn { padding:14rpx 28rpx; border-radius:12rpx; font-size:30rpx; line-height:40rpx; border:1rpx solid transparent; cursor:pointer; display:inline-block }
+.btn { padding:14rpx 28rpx; border-radius:12rpx; font-size:26rpx; line-height:40rpx; border:1rpx solid transparent; cursor:pointer; display:inline-block }
 .btn:hover { opacity:0.95 }
 .btn.cancel { background:#fff; color:#333; border-color:#dcdfe6 }
 .btn.save { background:#007AFF; color:#fff; box-shadow:0 6rpx 18rpx rgba(103,73,7,0.18) }

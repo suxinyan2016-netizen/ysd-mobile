@@ -3,9 +3,7 @@
     <view class="topbar">
       <view class="back" @click="goBack">
         <view class="back-icon">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M15.5 5.5L9 12l6.5 6.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-          </svg>
+          <view class="back-chevron"></view>
         </view>
       </view>
       <view class="title">包裹查询</view>
@@ -62,9 +60,7 @@
         <view class="drawer-header">
           <text class="drawer-title">包裹详情</text>
           <view class="close" @click="closeDetail" role="button" tabindex="0">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M6 6 L18 18 M6 18 L18 6" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-            </svg>
+            <text class="close-x">✕</text>
           </view>
         </view>
 
@@ -124,7 +120,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { ApiHelper } from '@/utils/apiHelper'
 import { openImageViewer } from '@/stores/imageViewer'
 
@@ -266,23 +262,30 @@ function handleParcelImageClick(img){
 }
 
 // Load first page automatically when entering the page
+function _onFocus() { page.value = 1; doSearch() }
+
 onMounted(() => {
   page.value = 1
   doSearch()
-  if (typeof window !== 'undefined' && window.addEventListener) {
-    window.addEventListener('focus', () => { page.value = 1; doSearch() })
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('focus', _onFocus)
+    window.addEventListener('focus', _onFocus)
   }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') window.removeEventListener('focus', _onFocus)
 })
 </script>
 
 .style-placeholder
 <style scoped lang="scss">
-.page-container{ height:100vh; display:flex; flex-direction:column; background:#f8f8f8; padding-top:88rpx }
+.page-container{ height:100vh; display:flex; flex-direction:column; background:#f8f8f8; padding-top: calc(64rpx + env(safe-area-inset-top, 4rpx)) !important }
 .topbar { height:88rpx; background:#082567; color:#fff; display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; right:0; z-index:999 }
 .title { color:#fff; font-size:34rpx; font-weight:700 }
 .back { position:absolute; left:12rpx; top:50%; transform:translateY(-50%) }
 .back-icon { width:56rpx; height:56rpx; background:rgba(255,255,255,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6rpx 16rpx rgba(0,0,0,0.18) }
-.back-icon svg { width:32rpx; height:32rpx }
+.back-chevron{ width:18rpx; height:18rpx; border-top:4rpx solid #fff; border-left:4rpx solid #fff; transform:rotate(-45deg); margin-left:8rpx; box-sizing:border-box }
 .search-bar{ display:flex; align-items:center; padding:20rpx; background:#fff }
 .search-input{ flex:1; display:flex; align-items:center; background:#f5f5f5; border-radius:40rpx; padding:0 30rpx; height:70rpx; margin-right:16rpx }
 .search-icon{ font-size:32rpx; margin-right:10rpx }
@@ -295,7 +298,7 @@ onMounted(() => {
   background: linear-gradient(90deg, #409EFF, #66B1FF);
   color: #fff;
   border-radius: 8rpx;
-  font-size: 20rpx;
+  font-size: 26rpx;
   font-weight: 400;
   padding: 0 16rpx;
   display: flex;
@@ -334,9 +337,11 @@ onMounted(() => {
 .drawer-content{ overflow:auto; flex:1; padding:16rpx 24rpx 24rpx }
 .close{ width:56rpx; height:56rpx; border-radius:28rpx; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.04); cursor:pointer; box-shadow:0 6rpx 14rpx rgba(0,0,0,0.06); }
 .close svg{ width:28rpx; height:28rpx }
+.close-x{ font-size:34rpx; color:#333; line-height:56rpx; text-align:center; display:block }
 .detail-list{ display:flex; flex-direction:column; gap:10rpx }
-.detail-row{ display:flex; align-items:center; padding:10rpx 0; border-bottom:1rpx solid #f0f0f0 }
-.label{ color:#666; /* increase left title width by 25% of a 20% baseline = 25% */ width: calc(20% * 1.25); flex: 0 0 calc(20% * 1.25); }
+.detail-row{ display:flex; align-items:flex-start; padding:10rpx 0; border-bottom:1rpx solid #f0f0f0 }
+.label{ color:#666; /* increase left title width by 25% of a 20% baseline = 25% */ width: calc(20% * 1.25); flex: 0 0 calc(20% * 1.25); font-size:26rpx !important; text-align:left !important }
+
 .value{ color:#333; flex: 1 1 auto }
 
 .items-section{ margin-top:12rpx }

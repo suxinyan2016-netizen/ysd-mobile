@@ -3,9 +3,7 @@
     <view class="topbar">
       <view class="back" @click="goBack">
         <view class="back-icon">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M15.5 5.5L9 12l6.5 6.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-          </svg>
+          <view class="back-chevron"></view>
         </view>
       </view>
       <view class="title">待发包裹</view>
@@ -112,7 +110,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { ApiHelper } from '@/utils/apiHelper'
 import { useUserStore } from '@/stores/user'
 
@@ -394,9 +392,16 @@ function onLoadMore(){ if (hasMore.value && !loading.value) { currentPage.value+
 onMounted(()=>{
   if (!userStore.userInfo?.id) userStore.checkLoginStatus()
   loadParcels(true)
-  if (typeof window !== 'undefined' && window.addEventListener) {
-    window.addEventListener('focus', () => { loadParcels(true) })
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('focus', _onFocus)
+    window.addEventListener('focus', _onFocus)
   }
+})
+
+function _onFocus() { loadParcels(true) }
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') window.removeEventListener('focus', _onFocus)
 })
 
 import { smartBack } from '@/utils/navigation'
@@ -416,7 +421,7 @@ function goBack(){ smartBack() }
 .title { color:#fff; font-size:34rpx; font-weight:700 }
 .back { position:absolute; left:12rpx; top:50%; transform:translateY(-50%) }
 .back-icon { width:56rpx; height:56rpx; background:rgba(255,255,255,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6rpx 16rpx rgba(0,0,0,0.18) }
-.back-icon svg { width:32rpx; height:32rpx }
+.back-chevron{ width:18rpx; height:18rpx; border-top:4rpx solid #fff; border-left:4rpx solid #fff; transform:rotate(-45deg); margin-left:8rpx; box-sizing:border-box }
 
 .search-bar {
   display: flex;
@@ -447,7 +452,7 @@ function goBack(){ smartBack() }
     background: linear-gradient(90deg, #409EFF, #66B1FF);
     color: #fff;
     border-radius: 8rpx;
-    font-size: 20rpx;
+    font-size: 26rpx;
     font-weight: 400;
     padding: 0 16rpx;
     display: flex;
@@ -471,7 +476,7 @@ function goBack(){ smartBack() }
 .dialog-title{ font-size:32rpx; font-weight:600; margin-bottom:20rpx }
 .item-card .row{ display:flex; justify-content:space-between; padding:10rpx 0; border-bottom:1rpx solid #f0f0f0 }
 .fees{ margin-top:16rpx } .fee-row{ display:flex; justify-content:space-between; align-items:center; padding:8rpx 0 } .fee-input{ width:40%; text-align:right; border:1rpx solid #eee; padding:10rpx; border-radius:6rpx }
-.dialog-actions{ display:flex; gap:16rpx; margin-top:20rpx } .dialog-actions .btn{ flex:1; font-size:24rpx; height:64rpx; line-height:64rpx }
+.dialog-actions{ display:flex; gap:16rpx; margin-top:20rpx } .dialog-actions .btn{ flex:1; font-size:26rpx; height:64rpx; line-height:64rpx }
 .dialog-actions .btn-cancel{ background:#E6A23C; color:#fff; border:none } .dialog-actions .btn-primary{ background:#67C23A; color:#fff; border:none }
 
 .loading-more,.no-more{ text-align:center; padding:30rpx; font-size:28rpx; color:#999 }

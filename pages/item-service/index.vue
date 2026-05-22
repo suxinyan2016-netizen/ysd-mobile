@@ -4,7 +4,7 @@
 
 <script setup>
 import ItemService from '@/components/ItemService.vue'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 const svc = ref(null)
 const keeperId = ref(null)
 const itemStatus = ref(null)
@@ -32,27 +32,31 @@ function parseParams() {
   }catch(e){ console.warn('parse route params failed', e) }
 }
 
+function _handleFocus() {
+  parseParams()
+  try{
+    const flag = (typeof uni !== 'undefined' && uni.getStorageSync) ? uni.getStorageSync('itemServiceRefresh') : null
+    if (flag) {
+      try{ uni.removeStorageSync && uni.removeStorageSync('itemServiceRefresh') } catch(e){}
+        if (svc.value && svc.value.load) svc.value.load()
+    }
+  }catch(e){}
+  // do not reload on every focus to avoid spurious list queries when navigating
+}
+
 onMounted(()=>{
   parseParams()
   // initial load
   if (svc.value && svc.value.load) svc.value.load()
 
-  // handle focus navigation and storage-based refresh flag
-  const handleFocus = () => {
-    parseParams()
-    try{
-      const flag = (typeof uni !== 'undefined' && uni.getStorageSync) ? uni.getStorageSync('itemServiceRefresh') : null
-      if (flag) {
-        try{ uni.removeStorageSync && uni.removeStorageSync('itemServiceRefresh') } catch(e){}
-          if (svc.value && svc.value.load) return svc.value.load()
-      }
-    }catch(e){}
-    // do not reload on every focus to avoid spurious list queries when navigating
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('focus', _handleFocus)
+    window.addEventListener('focus', _handleFocus)
   }
+})
 
-  if (typeof window !== 'undefined' && window.addEventListener) {
-    window.addEventListener('focus', handleFocus)
-  }
+onUnmounted(() => {
+  if (typeof window !== 'undefined') window.removeEventListener('focus', _handleFocus)
 })
 </script>
 

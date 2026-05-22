@@ -3,9 +3,7 @@
     <view class="topbar">
       <view class="back" @click="smartBack()">
         <view class="back-icon">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M15.5 5.5L9 12l6.5 6.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-          </svg>
+          <view class="back-chevron"></view>
         </view>
       </view>
       <view class="title">账户</view>
@@ -76,7 +74,7 @@ function openPayment(){
 .topbar .title{ color:#fff; font-size:34rpx; font-weight:700 }
 .back{ position:absolute; left:12rpx; top:50%; transform:translateY(-50%) }
 .back-icon{ width:56rpx; height:56rpx; background:rgba(255,255,255,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6rpx 16rpx rgba(0,0,0,0.18) }
-.back-icon svg{ width:32rpx; height:32rpx }
+.back-chevron{ width:18rpx; height:18rpx; border-top:4rpx solid #fff; border-left:4rpx solid #fff; transform:rotate(-45deg); margin-left:8rpx; box-sizing:border-box }
 .content { flex:1; display:flex; align-items:flex-start; justify-content:center; padding-top:72rpx }
 .icons{ display:flex; flex-direction:column; gap:18rpx; width:100%; align-items:center }
 .row{ width:92%; display:flex; gap:18rpx; justify-content:center }

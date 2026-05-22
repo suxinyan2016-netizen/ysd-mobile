@@ -4,9 +4,7 @@
     <view class="topbar">
         <view class="back" @click="goBack">
           <view class="back-icon">
-            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <path d="M15.5 5.5L9 12l6.5 6.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-            </svg>
+            <view class="back-chevron"></view>
           </view>
         </view>
         <view class="title">待收包裹</view>
@@ -108,7 +106,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { ApiHelper } from '@/utils/apiHelper'
 import { useUserStore } from '@/stores/user'
 
@@ -280,13 +278,19 @@ onMounted(() => {
   userStore.checkLoginStatus()
   loadParcels(true)
 
-  // Emulate onShow in H5 by listening to window focus events
-  if (typeof window !== 'undefined' && window.addEventListener) {
-    window.addEventListener('focus', () => {
-      userStore.checkLoginStatus()
-      loadParcels(true)
-    })
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('focus', _onFocus)
+    window.addEventListener('focus', _onFocus)
   }
+})
+
+function _onFocus() {
+  userStore.checkLoginStatus()
+  loadParcels(true)
+}
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') window.removeEventListener('focus', _onFocus)
 })
 
 import { smartBack } from '@/utils/navigation'
@@ -308,7 +312,7 @@ function goBack(){
 .title { color:#fff; font-size:34rpx; font-weight:700 }
 .back { position:absolute; left:12rpx; top:50%; transform:translateY(-50%) }
 .back-icon { width:56rpx; height:56rpx; background:rgba(255,255,255,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6rpx 16rpx rgba(0,0,0,0.18) }
-.back-icon svg { width:32rpx; height:32rpx }
+.back-chevron{ width:18rpx; height:18rpx; border-top:4rpx solid #fff; border-left:4rpx solid #fff; transform:rotate(-45deg); margin-left:8rpx; box-sizing:border-box }
 
 /* user-bar removed per UX request */
 
@@ -347,7 +351,7 @@ function goBack(){
     background: linear-gradient(90deg, #409EFF, #66B1FF);
     color: #fff;
     border-radius: 8rpx; /* match action-btn style */
-    font-size: 20rpx; /* reduce font-size */
+    font-size: 26rpx; /* reduce font-size */
     font-weight: 400; /* normal */
     padding: 0 16rpx;
     display: flex;
@@ -370,7 +374,7 @@ function goBack(){
     border-radius: 8rpx; /* match action-btn */
     border: 1rpx solid rgba(0,0,0,0.06);
     padding: 0 16rpx;
-    font-size: 20rpx; /* reduce font-size */
+    font-size: 22rpx; /* reduce font-size */
     font-weight: 400;
     box-shadow: 0 6rpx 18rpx rgba(255,204,0,0.14);
     margin-left: 18rpx; /* increase spacing from search button */
@@ -468,8 +472,9 @@ function goBack(){
       font-size: 28rpx;
       
       .label {
-        width: 160rpx;
-        color: #999;
+        	  width: 160rpx;
+        	  color: #999;
+        	  font-size: 26rpx !important;
       }
       
       .value {

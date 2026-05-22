@@ -3,9 +3,7 @@
     <view class="topbar">
       <view class="back" @click="goBack">
         <view class="back-icon">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M15.5 5.5L9 12l6.5 6.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-          </svg>
+          <view class="back-chevron"></view>
         </view>
       </view>
       <view class="title">新增包裹</view>
@@ -473,14 +471,14 @@ onLoad(() => {
 .topbar .title { color:#fff; font-size:34rpx; font-weight:700 }
 .topbar .back { position:absolute; left:12rpx; top:50%; transform:translateY(-50%); z-index:1001; }
 .topbar .back-icon { width:56rpx; height:56rpx; background:rgba(255,255,255,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6rpx 16rpx rgba(0,0,0,0.18); cursor:pointer }
-.topbar .back-icon svg { width:32rpx; height:32rpx }
+.back-chevron{ width:18rpx; height:18rpx; border-top:4rpx solid #fff; border-left:4rpx solid #fff; transform:rotate(-45deg); margin-left:8rpx; box-sizing:border-box }
 .step-indicator { background:#fff; padding:30rpx; text-align:center; font-size:32rpx; font-weight:bold; color:#409EFF; border-bottom:1rpx solid #eee }
 .step-content { flex:1; padding:20rpx; padding-bottom:20rpx }
   .info-card { background:#fff; border-radius:16rpx; padding:30rpx; margin-bottom:20rpx }
   .card-title { display:block; font-size:30rpx; font-weight:700; color:#333; margin-bottom:12rpx }
   .info-row { display:flex; justify-content:flex-start; align-items:center; gap:12rpx; padding:9rpx 0; font-size:24rpx }
   .info-row:last-child { padding-bottom:0 }
-  .label { width:auto; color:#666; margin-right:20rpx; text-align:right; font-size:22rpx }
+  .label { width:auto; color:#666; margin-right:20rpx; text-align:right; font-size:26rpx !important }
   .form-input { width:460rpx; flex:none; height:70rpx; border:none; border-bottom:1rpx solid #e6e6e6; border-radius:0; padding:0 8rpx; font-size:22rpx }
   .two-col-row { display:flex; justify-content:space-between; gap:20rpx }
   .two-col-row .col { display:flex; align-items:center; gap:12rpx }

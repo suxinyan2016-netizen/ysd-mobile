@@ -3,9 +3,7 @@
     <view class="topbar">
       <view class="back" @click="goBack">
         <view class="back-icon">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M15.5 5.5L9 12l6.5 6.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-          </svg>
+          <view class="back-chevron"></view>
         </view>
       </view>
       <view class="title">{{ pageTitle }}</view>
@@ -119,13 +117,13 @@ onMounted(() => { load() })
 .title{ color:#fff; font-size:34rpx; font-weight:700 }
 .topbar .back { position:absolute; left:12rpx; top:50%; transform:translateY(-50%); z-index:1001 }
 .topbar .back-icon { width:56rpx; height:56rpx; background:rgba(255,255,255,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6rpx 16rpx rgba(0,0,0,0.18); cursor:pointer }
-.topbar .back-icon svg { width:32rpx; height:32rpx }
+.back-chevron{ width:18rpx; height:18rpx; border-top:4rpx solid #fff; border-left:4rpx solid #fff; transform:rotate(-45deg); margin-left:8rpx; box-sizing:border-box }
 .list-container{ padding:20rpx; padding-top:120rpx }
 .row-card{ background:#fff; padding:14rpx; border-radius:8rpx; margin-bottom:12rpx }
-.line1{ display:flex; gap:12rpx; align-items:center; margin-bottom:8rpx }
+.line1{ display:flex; gap:6rpx; align-items:center; margin-bottom:8rpx }
 .line2{ display:flex; gap:12rpx; align-items:center }
-.itemno{ color:#409EFF; width:160rpx }
-.dict{ width:120rpx; color:#666 }
+.itemno{ color:#409EFF; width:240rpx }
+.dict{ width:160rpx; color:#666 }
 .qty{ width:110rpx; color:#666 }
 .status{ width:80rpx; color:#666 }
 .sellpart{ flex:0.85; color:#333 }
