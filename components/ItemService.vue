@@ -35,7 +35,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { computed } from 'vue'
 import { ApiHelper } from '@/utils/apiHelper'
 import { useUserStore } from '@/stores/user'
@@ -107,8 +107,8 @@ function openItem(row){
 }
 
 function goBack(){ smartBack() }
-
-onMounted(() => { load() })
+// load() is called by the parent page (item-service/index.vue) after parsing route params
+// do NOT call load() here — that would fire before the parent sets keeperId/itemStatus props
 </script>
 
 <style scoped>

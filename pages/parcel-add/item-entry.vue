@@ -92,6 +92,7 @@
 <script setup>
 import ModalPicker from '@/components/ModalPicker.vue'
 import { ref, computed, onMounted, getCurrentInstance } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 let route, router
 try {
   const { useRoute, useRouter } = require('vue-router')
@@ -470,25 +471,31 @@ async function handleSubmit() {
   } catch(e) { console.error('提交失败', e); uni.hideLoading(); uni.showToast({ title: '提交失败: ' + (e?.message || ''), icon: 'none' }) } finally { isSaving.value = false }
 }
 
+// onLoad fires before onMounted and reliably provides URL params on native
+const _loadOpts = ref(null)
+onLoad((opts) => { _loadOpts.value = opts || {} })
+
 onMounted(async () => {
   loadDicts()
   try {
-    if (typeof getCurrentPages === 'function') {
+    // Primary: onLoad opts (native); fallback: getCurrentPages (H5 edge case)
+    let opts = (_loadOpts.value && Object.keys(_loadOpts.value).length) ? _loadOpts.value : {}
+    if (!Object.keys(opts).length && typeof getCurrentPages === 'function') {
       const pages = getCurrentPages() || []
       const current = pages[pages.length - 1] || {}
-      const opts = current.options || {}
-      if (opts.parcelId) parcelId.value = opts.parcelId
-      if (opts.packageNo) { try { packageNo.value = decodeURIComponent(opts.packageNo) } catch(e) { packageNo.value = opts.packageNo } }
-      if (opts.ownerId) ownerIdFromRoute.value = opts.ownerId
-      item.value.receiveParcelId = parcelId.value || item.value.receiveParcelId
-      item.value.receivePackageNo = packageNo.value || item.value.receivePackageNo
-        // hide step buttons when navigated from ItemService (fromService=1)
-        if (opts.fromService === '1' || opts.fromService === 'true' || opts.fromService === 1) {
-          showStepButtons.value = false
-        }
-      if (opts.itemId) {
-        try { await loadExistingItem(opts.itemId) } catch(e) { console.warn('loadExistingItem failed in onMounted', e) }
-      }
+      opts = current.options || {}
+    }
+    if (opts.parcelId) parcelId.value = opts.parcelId
+    if (opts.packageNo) { try { packageNo.value = decodeURIComponent(opts.packageNo) } catch(e) { packageNo.value = opts.packageNo } }
+    if (opts.ownerId) ownerIdFromRoute.value = opts.ownerId
+    item.value.receiveParcelId = parcelId.value || item.value.receiveParcelId
+    item.value.receivePackageNo = packageNo.value || item.value.receivePackageNo
+    // hide step buttons when navigated from ItemService (fromService=1)
+    if (opts.fromService === '1' || opts.fromService === 'true' || opts.fromService === 1) {
+      showStepButtons.value = false
+    }
+    if (opts.itemId) {
+      try { await loadExistingItem(opts.itemId) } catch(e) { console.warn('loadExistingItem failed in onMounted', e) }
     }
   } catch (e) { console.warn('populate route params failed', e) }
   try {
@@ -554,7 +561,7 @@ async function loadExistingItem(itemId) {
 
 <style lang="scss" scoped>
 /* styles aligned with pages/parcel-add/create.vue */
-.page-container { height:100vh; display:flex; flex-direction:column; background:#f8f8f8; padding-top:68rpx }
+.page-container { height:100vh; display:flex; flex-direction:column; background:#f8f8f8; padding-top:108rpx }
 .topbar { height:88rpx; background:#082567; color:#fff; display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; right:0; z-index:999 }
 .topbar .title { color:#fff; font-size:34rpx; font-weight:700 }
 .topbar .back { position:absolute; left:12rpx; top:50%; transform:translateY(-50%); z-index:1001; }

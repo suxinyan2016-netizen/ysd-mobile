@@ -79,6 +79,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { ApiHelper } from '@/utils/apiHelper'
 import { uploadFile, chooseFileFlexible } from '@/utils/uploadHelper'
 import { useUserStore } from '@/stores/user'
@@ -217,12 +218,21 @@ async function handleSubmit(){ if (isSaving.value) return; isSaving.value = true
 
 function goBack(){ smartBack() }
 
-onMounted(()=>{ try { if (typeof getCurrentPages === 'function') { const pages = getCurrentPages() || []; const current = pages[pages.length - 1] || {}; const opts = current.options || {}; if (opts.itemId) itemId = opts.itemId; if (opts.fromService === '1' || opts.fromService === 'true' || opts.fromService === 1) fromServiceFlag = true; if (opts.receiveParcelId) item.value.receiveParcelId = opts.receiveParcelId; if (opts.receivePackageNo) item.value.receivePackageNo = opts.receivePackageNo } }catch(e){ console.warn('populate route params failed', e) } if (!item.value.tempKey) item.value.tempKey = 'tk_' + Date.now() + '_' + Math.floor(Math.random()*1000000); load() })
+// onLoad fires before onMounted with URL params reliably on native
+onLoad((opts) => {
+  if (!opts) return
+  if (opts.itemId) itemId = opts.itemId
+  if (opts.fromService === '1' || opts.fromService === 'true' || opts.fromService === 1) fromServiceFlag = true
+  if (opts.receiveParcelId) item.value.receiveParcelId = opts.receiveParcelId
+  if (opts.receivePackageNo) item.value.receivePackageNo = opts.receivePackageNo
+})
+
+onMounted(()=>{ if (!item.value.tempKey) item.value.tempKey = 'tk_' + Date.now() + '_' + Math.floor(Math.random()*1000000); load() })
 
 </script>
 
 <style lang="scss" scoped>
-.page-container { height:100vh; display:flex; flex-direction:column; background:#f8f8f8; padding-top:68rpx }
+.page-container { height:100vh; display:flex; flex-direction:column; background:#f8f8f8; padding-top:108rpx }
 .topbar { height:88rpx; background:#082567; color:#fff; display:flex; align-items:center; justify-content:center; position:fixed; top:0; left:0; right:0; z-index:999 }
 .topbar .title { color:#fff; font-size:34rpx; font-weight:700 }
 .topbar .back { position:absolute; left:12rpx; top:50%; transform:translateY(-50%); z-index:1001; }

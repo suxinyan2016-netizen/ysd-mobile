@@ -90,25 +90,29 @@
     {
       "path": "pages/parcel-incoming/item-entry",
       "style": {
-        "navigationBarTitleText": "商品录入"
+        "navigationBarTitleText": "商品录入",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/parcel-add/item-entry",
       "style": {
-        "navigationBarTitleText": "商品录入"
+        "navigationBarTitleText": "商品录入",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/parcel-add/item-test-entry",
       "style": {
-        "navigationBarTitleText": "商品测试录入"
+        "navigationBarTitleText": "商品测试录入",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/parcel-add/item-repair-entry",
       "style": {
-        "navigationBarTitleText": "商品维修录入"
+        "navigationBarTitleText": "商品维修录入",
+        "navigationStyle": "custom"
       }
     },
     {
