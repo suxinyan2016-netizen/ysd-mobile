@@ -16,6 +16,10 @@
         <view class="info-row">
           <text class="label">运单号:</text>
           <input class="form-input" v-model="parcel.packageNo" placeholder="请输入运单号" />
+          <view class="scan-btn" @click="scanBarcode">
+            <text class="scan-icon">📷</text>
+            <text class="scan-text">扫码</text>
+          </view>
         </view>
         <view class="info-row">
           <text class="label">包裹类型:</text>
@@ -94,6 +98,20 @@ const userStore = useUserStore()
 
 function goBack() {
   smartBack()
+}
+
+function scanBarcode() {
+  uni.scanCode({
+    scanType: ['barCode'],
+    success(res) {
+      parcel.value.packageNo = res.result
+    },
+    fail(err) {
+      if (err.errMsg !== 'scanCode:fail cancel') {
+        uni.showToast({ title: '扫码失败', icon: 'none' })
+      }
+    }
+  })
 }
 
 const parcel = ref({ packageNo: '' })
@@ -479,7 +497,10 @@ onLoad(() => {
   .info-row { display:flex; justify-content:flex-start; align-items:center; gap:12rpx; padding:9rpx 0; font-size:24rpx }
   .info-row:last-child { padding-bottom:0 }
   .label { width:auto; color:#666; margin-right:20rpx; text-align:right; font-size:26rpx !important }
-  .form-input { width:460rpx; flex:none; height:70rpx; border:none; border-bottom:1rpx solid #e6e6e6; border-radius:0; padding:0 8rpx; font-size:22rpx }
+  .form-input { width:360rpx; flex:none; height:70rpx; border:none; border-bottom:1rpx solid #e6e6e6; border-radius:0; padding:0 8rpx; font-size:22rpx }
+  .scan-btn { display:flex; align-items:center; gap:4rpx; padding:0 14rpx; height:60rpx; background:#f0f4ff; border-radius:8rpx; flex-shrink:0; cursor:pointer }
+  .scan-icon { font-size:28rpx; color:#409EFF; line-height:1 }
+  .scan-text { font-size:22rpx; color:#409EFF }
   .two-col-row { display:flex; justify-content:space-between; gap:20rpx }
   .two-col-row .col { display:flex; align-items:center; gap:12rpx }
   .two-col-row .owner-col { flex:1 }

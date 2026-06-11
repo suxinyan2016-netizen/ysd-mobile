@@ -18,7 +18,13 @@
         </view>
         <view class="info-row">
           <text class="label">商品号:</text>
-          <input class="form-input" v-model="item.itemNo" placeholder="请输入商品号" />
+          <view class="input-scan-wrap">
+            <input class="form-input" v-model="item.itemNo" placeholder="请输入商品号" @blur="lookupSku" />
+            <view class="scan-btn" @click="scanBarcode">
+              <text class="scan-icon">📷</text>
+              <text class="scan-text">扫码</text>
+            </view>
+          </view>
         </view>
         <view class="info-row">
           <text class="label">商品名:</text>
@@ -155,11 +161,60 @@ function selectModal(idx) {
     dictIndex.value = idx
     const sel = dictOptions.value[idx]
     item.value.dictId = sel ? sel.dictId : null
+  } else if (modalField.value === 'sku') {
+    applySku(skuCandidates.value[idx])
   }
   showModal.value = false
 }
 
 function goBack() { smartBack() }
+
+function scanBarcode() {
+  uni.scanCode({
+    scanType: ['barCode'],
+    success(res) {
+      item.value.itemNo = res.result
+      lookupSku()
+    },
+    fail(err) {
+      if (err.errMsg !== 'scanCode:fail cancel') {
+        uni.showToast({ title: '扫码失败', icon: 'none' })
+      }
+    }
+  })
+}
+
+const skuCandidates = ref([])
+
+async function lookupSku() {
+  const itemNo = item.value.itemNo
+  const ownerId = ownerIdFromRoute.value
+  if (!itemNo || !ownerId) return
+  try {
+    const res = await ApiHelper.get(`/skus/${ownerId}/${encodeURIComponent(itemNo)}`)
+    if (res && res.code === 1 && res.data) {
+      const skuList = Array.isArray(res.data) ? res.data : [res.data]
+      if (skuList.length === 1) {
+        applySku(skuList[0])
+      } else if (skuList.length > 1) {
+        skuCandidates.value = skuList
+        openModal('sku', skuList.map(s => s.sellerPart || s.itemNo), '选择商品名')
+      }
+    }
+  } catch (e) {
+    console.warn('lookupSku failed', e)
+  }
+}
+
+function applySku(sku) {
+  if (!sku) return
+  if (sku.sellerPart) item.value.sellerPart = sku.sellerPart
+  if (sku.dictId) {
+    item.value.dictId = sku.dictId
+    const idx = dictOptions.value.findIndex(d => (d.dictId == sku.dictId) || (d.id == sku.dictId))
+    if (idx >= 0) dictIndex.value = idx
+  }
+}
 
 function previewImageFull(imageUrl) { if (!imageUrl) return; const host = ApiHelper.getHost(); const fullUrl = imageUrl.startsWith('http') ? imageUrl : (host + imageUrl); uni.previewImage({ urls: [fullUrl], current: fullUrl }) }
 
@@ -574,6 +629,8 @@ async function loadExistingItem(itemId) {
 .info-row:last-child { padding-bottom:0 }
 .label { width:160rpx; color:#666; margin-right:12rpx; text-align:left; font-size:22rpx }
 .form-input { width:100%; flex:1; height:70rpx; border:none; border-bottom:1rpx solid #e6e6e6; border-radius:0; padding:0 8rpx; font-size:22rpx }
+.input-scan-wrap { display:flex; flex:1; align-items:center; gap:10rpx }
+.input-scan-wrap .form-input { width:auto; flex:1 }
 .radio-group { display:flex; gap:20rpx }
 .radio-item { padding:10rpx 20rpx; border:1rpx solid #ddd; border-radius:20rpx; color:#666; cursor:pointer; background:#fff }
 .radio-item.active { background:#409EFF; color:#fff; border-color:#409EFF }
@@ -588,6 +645,9 @@ async function loadExistingItem(itemId) {
 .btn-primary { background:#409EFF; color:#fff }
 .btn-submit { background:#67C23A; color:#fff }
 .btn-warning { background: #E6A23C; color: #fff }
+.scan-btn { display:flex; align-items:center; gap:4rpx; padding:0 14rpx; height:60rpx; background:#f0f4ff; border-radius:8rpx; flex-shrink:0; cursor:pointer }
+.scan-icon { font-size:28rpx; color:#409EFF; line-height:1 }
+.scan-text { font-size:22rpx; color:#409EFF }
 /* modal styles (shared with other pages) */
 /* modal styles moved to components/ModalPicker.vue */
 </style>
