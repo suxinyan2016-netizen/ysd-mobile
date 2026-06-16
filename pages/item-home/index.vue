@@ -9,7 +9,7 @@
       <view class="title">商品查询</view>
     </view>
 
-    <view style="padding: 16rpx; padding-top: 32rpx; padding-bottom: 0; box-sizing: border-box;">
+    <view style="padding: 16rpx; padding-top: 64rpx; padding-bottom: 0; box-sizing: border-box;">
       <image src="/static/item_main.png" mode="widthFix" style="width: 100%; border-radius: 16rpx; display: block;" />
     </view>
 

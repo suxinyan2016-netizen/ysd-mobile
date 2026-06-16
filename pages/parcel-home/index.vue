@@ -9,7 +9,7 @@
       <view class="title">包裹管理</view>
     </view>
 
-    <view style="padding: 16rpx; padding-top: 32rpx; padding-bottom: 0; box-sizing: border-box;">
+    <view style="padding: 16rpx; padding-top: 64rpx; padding-bottom: 0; box-sizing: border-box;">
       <image src="/static/parcel_main.png" mode="widthFix" style="width: 100%; border-radius: 16rpx; display: block;" />
     </view>
 
@@ -127,7 +127,7 @@ export default {
 .back{ position:absolute; left:12rpx; top:50%; transform:translateY(-50%) }
 .back-icon{ width:56rpx; height:56rpx; background:rgba(255,255,255,0.12); border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 6rpx 16rpx rgba(0,0,0,0.18) }
 .back-chevron{ width:18rpx; height:18rpx; border-top:4rpx solid #fff; border-left:4rpx solid #fff; transform:rotate(-45deg); margin-left:8rpx; box-sizing:border-box }
-.content{ flex:1; padding:0 16rpx 40rpx; display:flex; flex-direction:column; gap:24rpx }
+.content{ flex:1; padding:0 16rpx 40rpx; display:flex; flex-direction:column; gap:12rpx }
 .func-card{ background:#fff; border-radius:24rpx; padding:8rpx 24rpx 20rpx; box-shadow:0 4rpx 24rpx rgba(8,37,103,0.08) }
 .section-title{ font-size:28rpx; font-weight:700; color:#082567; margin-bottom:24rpx; padding-left:4rpx }
 .primary-row{ display:flex; gap:20rpx; margin-bottom:20rpx }
