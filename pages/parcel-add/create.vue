@@ -109,9 +109,22 @@
         </view>
       </view>
 
+      <!-- item info card: shown when navigating from item-owner (transfer/sale) -->
+      <view v-if="fromItemFlow && fromItemInfo" class="section item-info-card">
+        <text class="section-title">关联商品信息</text>
+        <view class="item-info-row"><text class="item-label">商品号:</text><text class="item-value">{{ fromItemInfo.itemNo || '-' }}</text></view>
+        <view class="item-info-row"><text class="item-label">类别:</text><text class="item-value">{{ fromItemInfo.dictName || '-' }}</text></view>
+        <view class="item-info-row"><text class="item-label">商品名:</text><text class="item-value">{{ fromItemInfo.sellerPart || fromItemInfo.mfrPart || '-' }}</text></view>
+        <view class="item-info-row"><text class="item-label">是否良品:</text><text :class="['item-value', fromItemInfo.isGood==0 ? 'item-bad' : '']">{{ fromItemInfo.isGood==1 ? '良品' : (fromItemInfo.isGood==0 ? '次品' : '-') }}</text></view>
+        <view class="item-info-row"><text class="item-label">数量:</text><text class="item-value">{{ fromItemInfo.qty ?? fromItemInfo.quantity ?? '-' }}</text></view>
+        <view class="item-info-row"><text class="item-label">状态:</text><text class="item-value">{{ mapFromItemStatus(fromItemInfo.itemStatus) }}</text></view>
+        <view class="item-info-row"><text class="item-label">货主:</text><text class="item-value">{{ fromItemInfo.owner || fromItemInfo.ownerName || '-' }}</text></view>
+        <view class="item-info-row"><text class="item-label">仓库:</text><text class="item-value">{{ fromItemInfo.keeper || fromItemInfo.keeperName || '-' }}</text></view>
+      </view>
+
       <view class="action-btns">
         <button class="btn btn-save" :disabled="isSaving || savedOnce" @click="handleSave">保存</button>
-        <button class="btn btn-primary" :disabled="isSaving || !parcel.parcelId" @click="handleNext">下一步</button>
+        <button v-if="!fromItemFlow" class="btn btn-primary" :disabled="isSaving || !parcel.parcelId" @click="handleNext">下一步</button>
       </view>
       <!-- reusable modal component -->
       <ModalPicker v-if="showModal" :show="showModal" :title="modalTitle" :list="modalList" @select="selectModal" @close="closeModal" />
@@ -156,6 +169,7 @@ const route = (typeof useRoute === 'function') ? useRoute() : { query: {}, param
 const routeQuery = (route && (route.query || route.params)) || {}
 const fromItemId = ref(routeQuery.fromItemId || routeQuery.itemId || '')
 const fromItemFlow = ref(!!fromItemId.value)
+const fromItemInfo = ref(null)
 const senderReadonly = ref(routeQuery.senderReadonly === '1' || routeQuery.senderReadonly === 'true' || routeQuery.senderReadonly === 1 || routeQuery.senderReadonly === true)
 const receiverManual = ref(routeQuery.receiverManual === '1' || routeQuery.receiverManual === 'true' || routeQuery.receiverManual === 1 || routeQuery.receiverManual === true)
 const hideDemands = ref(routeQuery.hideDemands === '1' || routeQuery.hideDemands === 'true' || routeQuery.hideDemands === 1 || routeQuery.hideDemands === true)
@@ -499,7 +513,11 @@ async function handleSave() {
 
     uni.hideLoading()
     uni.showToast({ title: '保存成功', icon: 'success' })
-    await loadParcelById(parcel.value.parcelId)
+    if (fromItemFlow.value) {
+      setTimeout(() => { smartBack() }, 600)
+    } else {
+      await loadParcelById(parcel.value.parcelId)
+    }
   } catch (e) { console.error('保存包裹失败', e); uni.hideLoading(); uni.showToast({ title: '保存失败: ' + (e?.message || ''), icon: 'none' }) } finally { isSaving.value = false }
 }
 
@@ -547,13 +565,53 @@ function handleNext() {
   uni.navigateTo({ url: `/pages/parcel-add/item-entry?parcelId=${parcel.value.parcelId}&packageNo=${encodeURIComponent(parcel.value.packageNo)}&ownerId=${ownerIdForRoute}` })
 }
 
+function mapFromItemStatus(s) {
+  const m = { 0: '检验中', 1: '已入库', 2: '已出库', 9: '异常' }
+  return m[s] ?? '-'
+}
+
+function loadFromItem() {
+  if (!fromItemId.value) return
+  try {
+    const stored = uni.getStorageSync('fromItemData')
+    if (stored && (String(stored.itemId) === String(fromItemId.value))) {
+      fromItemInfo.value = stored
+      return
+    }
+  } catch (e) { console.warn('getStorageSync fromItemData failed', e) }
+  // fallback: fetch from API if storage miss or itemId mismatch
+  ApiHelper.get('/items', { itemId: fromItemId.value, pageSize: 1 }).then(res => {
+    if (res && res.code === 1 && res.data) {
+      const rows = Array.isArray(res.data.rows) ? res.data.rows : (Array.isArray(res.data) ? res.data : null)
+      if (rows && rows.length) {
+        fromItemInfo.value = rows[0]
+      } else if (res.data.itemId || res.data.id) {
+        fromItemInfo.value = res.data
+      }
+    }
+  }).catch(e => { console.warn('loadFromItem API fallback failed', e) })
+}
+
 onLoad((options) => {
   if (!userStore.userInfo?.id) userStore.checkLoginStatus()
   loadOwners()
+  // Re-read all route params from onLoad options (authoritative in uni-app; avoids stale useRoute() values on re-navigation)
+  if (options) {
+    const newFromItemId = options.fromItemId || options.itemId || ''
+    fromItemId.value = newFromItemId
+    fromItemFlow.value = !!newFromItemId
+    fromItemInfo.value = null
+    senderReadonly.value = options.senderReadonly === '1' || options.senderReadonly === 'true'
+    receiverManual.value = options.receiverManual === '1' || options.receiverManual === 'true'
+    hideDemands.value = options.hideDemands === '1' || options.hideDemands === 'true'
+    keeperIdFromRoute.value = options.keeperId || ''
+    keeperNameFromRoute.value = options.keeperName ? decodeURIComponent(options.keeperName) : ''
+  }
+  if (fromItemFlow.value) loadFromItem()
   // apply route-derived defaults
-  if (keeperNameFromRoute && keeperNameFromRoute.value && !senderName.value) senderName.value = keeperNameFromRoute.value
-  if (keeperIdFromRoute && keeperIdFromRoute.value && !senderId.value) senderId.value = keeperIdFromRoute.value
-  if (receiverManual && receiverManual.value && routeQuery && (routeQuery.receiverName || routeQuery.receiver_name)) receiverNameInput.value = routeQuery.receiverName || routeQuery.receiver_name || ''
+  if (keeperNameFromRoute.value && !senderName.value) senderName.value = keeperNameFromRoute.value
+  if (keeperIdFromRoute.value && !senderId.value) senderId.value = keeperIdFromRoute.value
+  if (receiverManual.value && options && (options.receiverName || options.receiver_name)) receiverNameInput.value = options.receiverName || options.receiver_name || ''
   if (options && (typeof options.packageType !== 'undefined')) {
     packageType.value = String(options.packageType)
   } else {
@@ -663,6 +721,14 @@ function selectModal(idx) {
 .radio-group { display:flex; gap:40rpx; align-items:center }
 .radio-item { display:flex; align-items:center; gap:12rpx; font-size:24rpx; color:#333 }
 .radio-item radio, .radio-item .uni-radio { transform: scale(1.1); }
+
+/* item info card */
+.item-info-card { background:#fff; border-radius:16rpx; padding:30rpx; margin-bottom:20rpx; border-left:6rpx solid #409EFF }
+.item-info-row { display:flex; align-items:center; padding:9rpx 0; border-bottom:1rpx solid #f5f5f5; font-size:24rpx }
+.item-info-row:last-child { border-bottom:none }
+.item-label { width:140rpx; color:#888; flex-shrink:0; font-size:22rpx }
+.item-value { flex:1; color:#333; font-size:22rpx }
+.item-bad { color:#f56c6c }
 
 /* modal styles */
 /* modal styles moved to components/ModalPicker.vue */

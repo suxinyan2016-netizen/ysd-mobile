@@ -64,8 +64,8 @@
           <text class="drawer-title">商品详情</text>
           <view class="drawer-actions">
             <view v-if="showAddParcel" class="action-group">
-              <button class="btn primary header-btn" @click="openTransfer">调拨出库</button>
-              <button class="btn primary header-btn" @click="openUserSale">发售出库</button>
+              <button class="btn primary header-btn" :disabled="sel.itemStatus !== 1 && sel.itemStatus !== '1'" @click="openTransfer">调拨出库</button>
+              <button class="btn primary header-btn" :disabled="sel.itemStatus !== 1 && sel.itemStatus !== '1'" @click="openUserSale">发售出库</button>
             </view>
             <view v-if="canSplit" class="action-group">
               <button class="btn primary header-btn" @click.stop="openSplit">拆分</button>
@@ -370,6 +370,7 @@ const rawCommissionModel = ref(null)
     if (!sel.value || !sel.value.itemId) { uni.showToast({ title: '无可加入的商品', icon: 'none' }); return }
     const keeperName = sel.value.keeper || sel.value.keeperName || ''
     const keeperId = sel.value.keeperId || sel.value.keeperId || ''
+    try { uni.setStorageSync('fromItemData', sel.value) } catch(e) {}
     const url = `/pages/parcel-add/create?mode=transfer&packageType=2&senderReadonly=1&fromItemId=${sel.value.itemId}&keeperId=${keeperId}&keeperName=${encodeURIComponent(keeperName)}`
     try{ uni.navigateTo({ url }) } catch(e){ uni.showToast({ title:'跳转失败', icon:'none' }) }
   }
@@ -378,6 +379,7 @@ const rawCommissionModel = ref(null)
     if (!sel.value || !sel.value.itemId) { uni.showToast({ title: '无可发售的商品', icon: 'none' }); return }
     const keeperName = sel.value.keeper || sel.value.keeperName || ''
     const keeperId = sel.value.keeperId || sel.value.keeperId || ''
+    try { uni.setStorageSync('fromItemData', sel.value) } catch(e) {}
     const url = `/pages/parcel-add/create?mode=sale&packageType=3&senderReadonly=1&receiverManual=1&hideDemands=1&fromItemId=${sel.value.itemId}&keeperId=${keeperId}&keeperName=${encodeURIComponent(keeperName)}`
     try{ uni.navigateTo({ url }) } catch(e){ uni.showToast({ title:'跳转失败', icon:'none' }) }
   }
@@ -706,6 +708,9 @@ async function openDetail(row){
 function closeDetail(){ showDetail.value = false; sel.value = {}; itemImages.value = [] }
 
 function _onFocus() {
+  if (showDetail.value) {
+    closeDetail()
+  }
   page.value = 1
   if (props.inspect) doInspectSearch()
   else doSearch()
@@ -720,10 +725,12 @@ onMounted(() => {
     window.removeEventListener('focus', _onFocus)
     window.addEventListener('focus', _onFocus)
   }
+  try { uni.$on('itemQueryRefresh', _onFocus) } catch(e) {}
 })
 
 onUnmounted(() => {
   if (typeof window !== 'undefined') window.removeEventListener('focus', _onFocus)
+  try { uni.$off('itemQueryRefresh', _onFocus) } catch(e) {}
 })
 </script>
 

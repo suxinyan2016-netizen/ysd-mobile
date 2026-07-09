@@ -82,21 +82,34 @@
         <text class="dialog-title">Item 信息 ({{ currentDialogIndex + 1 }} / {{ dialogItems.length }})</text>
 
         <view class="item-card">
-          <view class="row seq-row"><text class="label">序号</text><text class="value">{{ currentDialogIndex + 1 }}</text></view>
-          <view class="row"><text class="label">ItemNo</text><text class="value">{{ dialogItems[currentDialogIndex]?.itemNo || dialogItems[currentDialogIndex]?.sku || '-' }}</text></view>
-          <view class="row"><text class="label">Seller Part</text><text class="value">{{ dialogItems[currentDialogIndex]?.sellerPart || dialogItems[currentDialogIndex]?.name || '-' }}</text></view>
-          <view class="row"><text class="label">Qty</text><text class="value">{{ dialogItems[currentDialogIndex]?.qty ?? dialogItems[currentDialogIndex]?.quantity ?? '-' }}</text></view>
-          <view class="row"><text class="label">isGood</text><text class="value">{{ dialogItems[currentDialogIndex]?.isGood === 1 ? '良品' : (dialogItems[currentDialogIndex]?.isGood === 0 ? '坏品' : '-') }}</text></view>
-          <view class="row"><text class="label">isUnpacked</text><text class="value">{{ dialogItems[currentDialogIndex]?.isUnpacked === 1 ? '已拆封' : (dialogItems[currentDialogIndex]?.isUnpacked === 0 ? '未拆封' : '-') }}</text></view>
-          <view class="row"><text class="label">IQCResult</text><text class="value">{{ dialogItems[currentDialogIndex]?.iqcResult || dialogItems[currentDialogIndex]?.IQCResult || '-' }}</text></view>
+          <view class="row seq-row"><text class="label">SN</text><text class="value">{{ currentDialogIndex + 1 }}</text></view>
+          <view class="row"><text class="label">ItemNo 商品号</text><text class="value">{{ dialogItems[currentDialogIndex]?.itemNo || dialogItems[currentDialogIndex]?.sku || '-' }}</text></view>
+          <view class="row"><text class="label">Seller Part 商品名</text><text class="value">{{ dialogItems[currentDialogIndex]?.sellerPart || dialogItems[currentDialogIndex]?.name || '-' }}</text></view>
+          <view class="row"><text class="label">Qty 数量</text><text class="value">{{ dialogItems[currentDialogIndex]?.qty ?? dialogItems[currentDialogIndex]?.quantity ?? '-' }}</text></view>
+          <view class="info-split-row">
+            <view class="info-left">
+              <view class="row"><text class="label">isGood</text><text class="value">{{ dialogItems[currentDialogIndex]?.isGood === 1 ? '良品' : (dialogItems[currentDialogIndex]?.isGood === 0 ? '坏品' : '-') }}</text></view>
+              <view class="row"><text class="label">isUnpacked</text><text class="value">{{ dialogItems[currentDialogIndex]?.isUnpacked === 1 ? '已拆封' : (dialogItems[currentDialogIndex]?.isUnpacked === 0 ? '未拆封' : '-') }}</text></view>
+              <view class="row"><text class="label">IQCResult</text><text class="value">{{ dialogItems[currentDialogIndex]?.iqcResult || dialogItems[currentDialogIndex]?.IQCResult || '-' }}</text></view>
+            </view>
+            <view class="info-right">
+              <view class="img-upload-area" @click="pickItemImage">
+                <image v-if="itemImagePreview" :src="itemImagePreview" class="img-preview" mode="aspectFill" />
+                <view v-else class="img-placeholder">
+                  <text class="img-plus">📷</text>
+                  <text class="img-hint">上传图片</text>
+                </view>
+              </view>
+            </view>
+          </view>
 
           <view class="fees">
-            <view class="fee-row"><text class="fee-label">InspectFee</text><input class="fee-input" type="number" v-model="feeForm.inspectFee" @blur="feeForm.inspectFee = formatToTwo(feeForm.inspectFee)" /></view>
-            <view class="fee-row"><text class="fee-label">repairFee</text><input class="fee-input" type="number" v-model="feeForm.repairFee" @blur="feeForm.repairFee = formatToTwo(feeForm.repairFee)" /></view>
-            <view class="fee-row"><text class="fee-label">keepFee</text><input class="fee-input" type="number" v-model="feeForm.keepFee" @blur="feeForm.keepFee = formatToTwo(feeForm.keepFee)" /></view>
-            <view class="fee-row"><text class="fee-label">packingFee</text><input class="fee-input" type="number" v-model="feeForm.packingFee" @blur="feeForm.packingFee = formatToTwo(feeForm.packingFee)" /></view>
-            <view class="fee-row"><text class="fee-label">OtherFee</text><input class="fee-input" type="number" v-model="feeForm.otherFee" @blur="feeForm.otherFee = formatToTwo(feeForm.otherFee)" /></view>
-            <view class="fee-total"><text class="fee-total-label">TotalFee</text><text class="fee-total-value">{{ totalFee() }}</text></view>
+            <view class="fee-row"><text class="fee-label">InspectFee 检测费</text><input class="fee-input" type="number" v-model="feeForm.inspectFee" @blur="feeForm.inspectFee = formatToTwo(feeForm.inspectFee)" /></view>
+            <view class="fee-row"><text class="fee-label">repairFee 维修费</text><input class="fee-input" type="number" v-model="feeForm.repairFee" @blur="feeForm.repairFee = formatToTwo(feeForm.repairFee)" /></view>
+            <view class="fee-row"><text class="fee-label">keepFee 保管费</text><input class="fee-input" type="number" v-model="feeForm.keepFee" @blur="feeForm.keepFee = formatToTwo(feeForm.keepFee)" /></view>
+            <view class="fee-row"><text class="fee-label">packingFee 包装费</text><input class="fee-input" type="number" v-model="feeForm.packingFee" @blur="feeForm.packingFee = formatToTwo(feeForm.packingFee)" /></view>
+            <view class="fee-row"><text class="fee-label">OtherFee 其他费</text><input class="fee-input" type="number" v-model="feeForm.otherFee" @blur="feeForm.otherFee = formatToTwo(feeForm.otherFee)" /></view>
+            <view class="fee-total"><text class="fee-total-label">TotalFee 总费用</text><text class="fee-total-value">{{ totalFee() }}</text></view>
           </view>
         </view>
 
@@ -106,12 +119,19 @@
         </view>
       </view>
     </view>
+    <!-- hidden canvas for timestamp watermark -->
+    <canvas
+      canvas-id="watermark-canvas"
+      id="watermark-canvas"
+      :style="`position:fixed; left:-9999px; top:0; width:${canvasW}px; height:${canvasH}px; opacity:0; pointer-events:none;`"
+    />
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, getCurrentInstance } from 'vue'
 import { ApiHelper } from '@/utils/apiHelper'
+import { uploadFile } from '@/utils/uploadHelper'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
@@ -130,6 +150,13 @@ const dialogParcel = ref(null)
 const dialogItems = ref([])
 const currentDialogIndex = ref(0)
 const feeForm = ref({ inspectFee: '0.00', repairFee: '0.00', keepFee: '0.00', packingFee: '0.00', otherFee: '0.00' })
+
+// image upload state
+const itemImagePath = ref('')
+const itemImagePreview = ref('')
+const canvasW = ref(750)
+const canvasH = ref(1000)
+const instance = getCurrentInstance()
 
 // 加载包裹列表（待发）
 async function loadParcels(reset = false) {
@@ -159,7 +186,7 @@ async function loadParcels(reset = false) {
     const result = await ApiHelper.get('/parcels', params)
     if (result && result.code === 1) {
       const data = result.data || {}
-      const list = Array.isArray(data.list) ? data.list : (Array.isArray(result.data) ? result.data : [])
+      const list = Array.isArray(data.rows) ? data.rows : (Array.isArray(data.list) ? data.list : (Array.isArray(result.data) ? result.data : []))
       if (reset) parcelList.value = list
       else parcelList.value = parcelList.value.concat(list)
       if (list.length < pageSize.value) hasMore.value = false
@@ -221,6 +248,66 @@ function totalFee() {
   return sum.toFixed(2)
 }
 
+function pickItemImage() {
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['camera', 'album'],
+    success: async (res) => {
+      const tempPath = res.tempFilePaths[0]
+      itemImagePreview.value = tempPath
+      try {
+        const processed = await addTimestampWatermark(tempPath)
+        itemImagePath.value = processed
+        itemImagePreview.value = processed
+      } catch(e) {
+        console.warn('水印添加失败', e)
+        itemImagePath.value = tempPath
+      }
+    }
+  })
+}
+
+function addTimestampWatermark(filePath) {
+  return new Promise((resolve) => {
+    uni.getImageInfo({
+      src: filePath,
+      success: async (imgInfo) => {
+        const maxW = 900
+        let w = imgInfo.width, h = imgInfo.height
+        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW }
+        canvasW.value = w
+        canvasH.value = h
+        await nextTick()
+        setTimeout(() => {
+          const ctx = uni.createCanvasContext('watermark-canvas', instance?.proxy)
+          ctx.drawImage(filePath, 0, 0, w, h)
+          const now = new Date()
+          const pad = n => String(n).padStart(2, '0')
+          const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())} Sent.`
+          const fontSize = Math.max(14, Math.round(w * 0.025))
+          const barH = fontSize + 20
+          ctx.setFillStyle('rgba(0,0,0,0.5)')
+          ctx.fillRect(0, h - barH, w, barH)
+          ctx.setFillStyle('#ffffff')
+          ctx.setFontSize(fontSize)
+          ctx.fillText(ts, 10, h - 8)
+          ctx.draw(false, () => {
+            setTimeout(() => {
+              uni.canvasToTempFilePath({
+                canvasId: 'watermark-canvas',
+                success: (r) => resolve(r.tempFilePath),
+                fail: () => resolve(filePath)
+              }, instance?.proxy)
+            }, 300)
+          })
+        }, 150)
+      },
+      fail: () => resolve(filePath)
+    })
+  })
+}
+
 async function openSendDialog(parcel) {
   try {
     uni.showLoading({ title: '加载中...' })
@@ -273,6 +360,8 @@ function closeSendDialog() {
   dialogParcel.value = null
   dialogItems.value = []
   currentDialogIndex.value = 0
+  itemImagePath.value = ''
+  itemImagePreview.value = ''
 }
 
 async function handleDialogSent() {
@@ -298,6 +387,21 @@ async function handleDialogSent() {
     }
 
     Object.assign(item, payload)
+
+    // Upload item image if selected
+    const currentItemId = item.itemId || item.id
+    if (itemImagePath.value && currentItemId) {
+      try {
+        uni.showLoading({ title: '上传图片...' })
+        await uploadFile(itemImagePath.value, 'ITEM', currentItemId, 'ITEM_IMAGE')
+        uni.hideLoading()
+      } catch(e) {
+        uni.hideLoading()
+        console.warn('图片上传失败', e)
+      }
+    }
+    itemImagePath.value = ''
+    itemImagePreview.value = ''
 
     if (idx < dialogItems.value.length - 1) {
       currentDialogIndex.value++
@@ -475,7 +579,7 @@ function goBack(){ smartBack() }
 .dialog-card{ width:86%; max-height:85%; background:#fff; border-radius:12rpx; padding:30rpx; overflow:auto }
 .dialog-title{ font-size:32rpx; font-weight:600; margin-bottom:20rpx }
 .item-card .row{ display:flex; justify-content:space-between; padding:10rpx 0; border-bottom:1rpx solid #f0f0f0 }
-.fees{ margin-top:16rpx } .fee-row{ display:flex; justify-content:space-between; align-items:center; padding:8rpx 0 } .fee-input{ width:40%; text-align:right; border:1rpx solid #eee; padding:10rpx; border-radius:6rpx }
+.fees{ margin-top:16rpx } .fee-row{ display:flex; justify-content:space-between; align-items:center; padding:8rpx 0 } .fee-input{ width:40%; text-align:right; border:1rpx solid #eee; padding:10rpx; border-radius:6rpx; font-size:24rpx; height:48rpx; line-height:48rpx } .fee-total{ display:flex; justify-content:space-between; align-items:center; padding:8rpx 0; border-top:1rpx solid #eee; margin-top:4rpx } .fee-total-label{ font-weight:600 } .fee-total-value{ width:40%; text-align:right; font-weight:600; font-size:24rpx; padding-right:12rpx }
 .dialog-actions{ display:flex; gap:16rpx; margin-top:20rpx } .dialog-actions .btn{ flex:1; font-size:26rpx; height:64rpx; line-height:64rpx }
 .dialog-actions .btn-cancel{ background:#E6A23C; color:#fff; border:none } .dialog-actions .btn-primary{ background:#67C23A; color:#fff; border:none }
 
@@ -483,4 +587,15 @@ function goBack(){ smartBack() }
 .empty-state{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:200rpx 0 }
 .empty-icon{ font-size:120rpx; margin-bottom:40rpx }
 .empty-text{ font-size:28rpx; color:#999 }
+/* info split row */
+.info-split-row{ display:flex; flex-direction:row; align-items:stretch; border-bottom:1rpx solid #f0f0f0 }
+.info-left{ flex:2 }
+.info-left .row{ border-bottom:1rpx solid #f0f0f0 }
+.info-left .row:last-child{ border-bottom:none }
+.info-right{ flex:1; padding:8rpx 0 8rpx 12rpx; display:flex; align-items:stretch }
+.img-upload-area{ flex:1; min-height:160rpx; border:2rpx dashed #ccc; border-radius:8rpx; display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; background:#fafafa }
+.img-preview{ width:100%; height:100% }
+.img-placeholder{ display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10rpx }
+.img-plus{ font-size:40rpx; color:#999 }
+.img-hint{ font-size:22rpx; color:#999; margin-top:6rpx; text-align:center }
 </style>
