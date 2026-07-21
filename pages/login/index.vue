@@ -78,6 +78,10 @@ export default {
       }
       this.loading = true
       try {
+        // Log login attempt for debugging
+        console.log('[Login] Attempting login with username:', this.username)
+        uni.setStorageSync('debug_log', 'Login attempt: ' + this.username + ' at ' + new Date().toISOString())
+
         // Use ApiHelper (statically imported) to send login request
         const res = await ApiHelper.post('/login', {
           username: this.username,
@@ -113,6 +117,8 @@ export default {
       } catch (err) {
         // log full error for debugging and show message
         console.error('login error:', err)
+        uni.setStorageSync('debug_error', JSON.stringify(err))
+        uni.setStorageSync('debug_error_time', new Date().toISOString())
         uni.showToast({ title: '登录请求失败: ' + (err?.message || ''), icon: 'none' })
       } finally {
         this.loading = false

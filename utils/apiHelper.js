@@ -8,17 +8,24 @@ export class ApiHelper {
         // vite env var support - read import.meta safely inside try/catch
         const _meta = import.meta
         const base = _meta && _meta.env && (_meta.env.VITE_API_BASE || _meta.env.VUE_APP_API_BASE)
-        if (base) return base
+        if (base) {
+          console.log('[ApiHelper] Using env var API_BASE:', base)
+          return base
+        }
         // If this is a production build but env var wasn't provided by the builder,
         // fall back to the known production API host to avoid pointing to localhost.
         if (_meta && _meta.env && _meta.env.PROD) {
+          console.log('[ApiHelper] Using PROD fallback: https://pacitem.com/api')
           return 'https://pacitem.com/api'
         }
     } catch (e) {}
     try {
       if (typeof window !== 'undefined' && window.location && window.location.hostname) {
         const h = window.location.hostname
-        if (h === 'localhost' || h === '127.0.0.1') return '/api'
+        if (h === 'localhost' || h === '127.0.0.1') {
+          console.log('[ApiHelper] Using localhost relative path: /api')
+          return '/api'
+        }
       }
     } catch (e) {}
 
@@ -26,10 +33,12 @@ export class ApiHelper {
     // cloud-built APK should use production backend by default.
     try {
       if (typeof plus !== 'undefined') {
-        return 'https://pacitem.com/api'
+        console.log('[ApiHelper] Native runtime detected, using: http://pacitem.com/api')
+        return 'http://pacitem.com/api'
       }
     } catch (e) {}
 
+    console.log('[ApiHelper] Using fallback: http://10.0.0.221:8080/api')
     return 'http://10.0.0.221:8080/api'
   }
   // 通用请求方法
@@ -45,6 +54,7 @@ export class ApiHelper {
           url: this.baseUrl + url,
           method,
           data,
+          timeout: 30000,
           header: {
             'Content-Type': 'application/json',
             ...authHeaders,
@@ -109,6 +119,8 @@ export class ApiHelper {
           },
           fail: (err) => {
             console.error(`API ${url} 请求失败:`, err)
+            console.error(`API ${url} 请求失败详情:`, JSON.stringify(err))
+            console.error(`API ${url} 请求URL:`, this.baseUrl + url)
             reject(err)
           }
         })
