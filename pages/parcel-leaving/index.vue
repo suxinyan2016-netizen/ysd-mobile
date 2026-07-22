@@ -393,7 +393,7 @@ async function handleDialogSent() {
     if (itemImagePath.value && currentItemId) {
       try {
         uni.showLoading({ title: '上传图片...' })
-        await uploadFile(itemImagePath.value, 'ITEM', currentItemId, 'ITEM_IMAGE')
+        await uploadFile(itemImagePath.value, 'ITEM', currentItemId, 'ITEM_IMAGE', null)
         uni.hideLoading()
       } catch(e) {
         uni.hideLoading()

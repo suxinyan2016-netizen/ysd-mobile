@@ -73,7 +73,21 @@
             type="primary"
             @click.stop="goToInspect(parcel)"
           >
-            验收
+            修改ITEM
+          </button>
+          <button 
+            class="action-btn action-btn-add"
+            size="mini"
+            @click.stop="goToAddItem(parcel)"
+          >
+            增加ITEM
+          </button>
+          <button 
+            class="action-btn action-btn-submit"
+            size="mini"
+            @click.stop="handleSubmit(parcel)"
+          >
+            提交
           </button>
         </view>
         <!-- 展开显示 items 列表 -->
@@ -241,6 +255,46 @@ async function goToInspect(parcel) {
     uni.navigateTo({
       url: `/pages/parcel-inspect/index?parcelId=${parcel.parcelId}&hidePending=1`
     })
+  }
+}
+
+// 跳转增加ITEM页面
+function goToAddItem(parcel) {
+  try {
+    uni.navigateTo({ url: `/pages/parcel-incoming/item-entry?parcelId=${parcel.parcelId}&packageNo=${encodeURIComponent(parcel.packageNo)}&ownerId=${parcel.ownerId}` })
+  } catch (e) {
+    uni.showToast({ title: '无法打开添加页面', icon: 'none' })
+  }
+}
+
+// 提交包裹
+async function handleSubmit(parcel) {
+  try {
+    uni.showModal({
+      title: '确认',
+      content: '确定要提交此包裹吗？',
+      success: async (res) => {
+        if (res.confirm) {
+          uni.showLoading({ title: '提交中...' })
+          try {
+            const result = await ApiHelper.post('/parcels', { parcelId: parcel.parcelId, status: 2 })
+            uni.hideLoading()
+            if (result && result.code === 1) {
+              uni.showToast({ title: '提交成功', icon: 'success' })
+              // 刷新包裹列表
+              loadParcels(true)
+            } else {
+              uni.showToast({ title: result?.msg || '提交失败', icon: 'none' })
+            }
+          } catch (e) {
+            uni.hideLoading()
+            uni.showToast({ title: '提交失败', icon: 'none' })
+          }
+        }
+      }
+    })
+  } catch (e) {
+    uni.showToast({ title: '操作失败', icon: 'none' })
   }
 }
 
@@ -487,9 +541,10 @@ function goBack(){
   .card-footer {
     display: flex;
     justify-content: flex-end;
+    gap: 10rpx;
     
     .action-btn {
-      padding: 0 40rpx;
+      padding: 0 30rpx;
       height: 60rpx;
       line-height: 60rpx;
       font-size: 26rpx;
@@ -497,6 +552,16 @@ function goBack(){
       &::after {
         border: none;
       }
+    }
+    
+    .action-btn-add {
+      background: #FFCC00;
+      color: #2b2b2b;
+    }
+    
+    .action-btn-submit {
+      background: #67C23A;
+      color: #fff;
     }
   }
 }
