@@ -53,16 +53,12 @@
         
         <view class="card-body">
           <view class="info-row">
-            <text class="label">发件人:</text>
-            <text class="value">{{ parcel.senderName || '-' }}</text>
+            <text class="label">货主:</text>
+            <text class="value">{{ getOwnerName(parcel) }}</text>
           </view>
           <view class="info-row">
-            <text class="label">收件人:</text>
-            <text class="value">{{ parcel.receiverName || '-' }}</text>
-          </view>
-          <view class="info-row">
-            <text class="label">发货时间:</text>
-            <text class="value">{{ parcel.sendDate || '-' }}</text>
+            <text class="label">收件时间:</text>
+            <text class="value">{{ parcel.receivedDate || parcel.received_date || parcel.sendDate || parcel.send_date || parcel.createTime || parcel.create_time || '-' }}</text>
           </view>
         </view>
         
@@ -135,6 +131,30 @@ const refreshing = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const hasMore = ref(true)
+
+// User list for mapping ownerId to username
+const userList = ref([])
+const userMap = ref({})
+
+// Load user list for owner name mapping
+async function loadUserList() {
+  try {
+    const res = await ApiHelper.get('/users/all')
+    if (res && res.code === 1 && Array.isArray(res.data)) {
+      userList.value = res.data
+      // Create map from userId/id to username
+      userMap.value = {}
+      res.data.forEach(user => {
+        const userId = user.id || user.userId
+        if (userId) {
+          userMap.value[userId] = user.name || user.username || String(userId)
+        }
+      })
+    }
+  } catch (e) {
+    console.warn('加载用户列表失败', e)
+  }
+}
 
 // 加载包裹列表
 async function loadParcels(reset = false) {
@@ -328,8 +348,18 @@ function getStatusClass(status) {
   return `status-${status}`
 }
 
+// 获取货主名称（基于ownerId）
+function getOwnerName(parcel) {
+  const ownerId = parcel.ownerId || parcel.owner_id
+  if (ownerId && userMap.value[ownerId]) {
+    return userMap.value[ownerId]
+  }
+  return parcel.ownerName || parcel.owner_name || parcel.owner?.name || parcel.owner?.username || parcel.keeperName || parcel.keeper_name || '-'
+}
+
 onMounted(() => {
   userStore.checkLoginStatus()
+  loadUserList()
   loadParcels(true)
 
   if (typeof window !== 'undefined') {

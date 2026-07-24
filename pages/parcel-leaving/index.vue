@@ -79,39 +79,51 @@
     <!-- 发送对话框（覆盖层） -->
     <view v-if="showSendDialog" class="dialog-overlay">
       <view class="dialog-card">
-        <text class="dialog-title">Item 信息 ({{ currentDialogIndex + 1 }} / {{ dialogItems.length }})</text>
+        <text class="dialog-title">Item 信息 (共 {{ dialogItems.length }} 项)</text>
 
-        <view class="item-card">
-          <view class="row seq-row"><text class="label">SN</text><text class="value">{{ currentDialogIndex + 1 }}</text></view>
-          <view class="row"><text class="label">ItemNo 商品号</text><text class="value">{{ dialogItems[currentDialogIndex]?.itemNo || dialogItems[currentDialogIndex]?.sku || '-' }}</text></view>
-          <view class="row"><text class="label">Seller Part 商品名</text><text class="value">{{ dialogItems[currentDialogIndex]?.sellerPart || dialogItems[currentDialogIndex]?.name || '-' }}</text></view>
-          <view class="row"><text class="label">Qty 数量</text><text class="value">{{ dialogItems[currentDialogIndex]?.qty ?? dialogItems[currentDialogIndex]?.quantity ?? '-' }}</text></view>
-          <view class="info-split-row">
-            <view class="info-left">
-              <view class="row"><text class="label">isGood</text><text class="value">{{ dialogItems[currentDialogIndex]?.isGood === 1 ? '良品' : (dialogItems[currentDialogIndex]?.isGood === 0 ? '坏品' : '-') }}</text></view>
-              <view class="row"><text class="label">isUnpacked</text><text class="value">{{ dialogItems[currentDialogIndex]?.isUnpacked === 1 ? '已拆封' : (dialogItems[currentDialogIndex]?.isUnpacked === 0 ? '未拆封' : '-') }}</text></view>
-              <view class="row"><text class="label">IQCResult</text><text class="value">{{ dialogItems[currentDialogIndex]?.iqcResult || dialogItems[currentDialogIndex]?.IQCResult || '-' }}</text></view>
+        <scroll-view class="items-scroll" scroll-y>
+          <view 
+            v-for="(item, index) in dialogItems" 
+            :key="item.itemId || item.id || index"
+            class="item-card"
+            :class="{ 'item-card-active': index === currentDialogIndex }"
+            @click="selectItem(index)"
+          >
+            <view class="item-header">
+              <text class="item-seq">Item {{ index + 1 }}</text>
+              <text class="item-status" v-if="index === currentDialogIndex">当前编辑</text>
             </view>
-            <view class="info-right">
-              <view class="img-upload-area" @click="pickItemImage">
-                <image v-if="itemImagePreview" :src="itemImagePreview" class="img-preview" mode="aspectFill" />
-                <view v-else class="img-placeholder">
-                  <text class="img-plus">📷</text>
-                  <text class="img-hint">上传图片</text>
+            <view class="row seq-row"><text class="label">SN</text><text class="value">{{ index + 1 }}</text></view>
+            <view class="row"><text class="label">ItemNo 商品号</text><text class="value">{{ item?.itemNo || item?.sku || '-' }}</text></view>
+            <view class="row"><text class="label">Seller Part 商品名</text><text class="value">{{ item?.sellerPart || item?.name || '-' }}</text></view>
+            <view class="row"><text class="label">Qty 数量</text><text class="value">{{ item?.qty ?? item?.quantity ?? '-' }}</text></view>
+            <view class="info-split-row">
+              <view class="info-left">
+                <view class="row"><text class="label">isGood</text><text class="value">{{ item?.isGood === 1 ? '良品' : (item?.isGood === 0 ? '坏品' : '-') }}</text></view>
+                <view class="row"><text class="label">isUnpacked</text><text class="value">{{ item?.isUnpacked === 1 ? '已拆封' : (item?.isUnpacked === 0 ? '未拆封' : '-') }}</text></view>
+                <view class="row"><text class="label">IQCResult</text><text class="value">{{ item?.iqcResult || item?.IQCResult || '-' }}</text></view>
+              </view>
+              <view class="info-right" v-if="index === currentDialogIndex">
+                <view class="img-upload-area" @click.stop="pickItemImage">
+                  <image v-if="itemImagePreview" :src="itemImagePreview" class="img-preview" mode="aspectFill" />
+                  <view v-else class="img-placeholder">
+                    <text class="img-plus">📷</text>
+                    <text class="img-hint">上传图片</text>
+                  </view>
                 </view>
               </view>
             </view>
-          </view>
 
-          <view class="fees">
-            <view class="fee-row"><text class="fee-label">InspectFee 检测费</text><input class="fee-input" type="number" v-model="feeForm.inspectFee" @blur="feeForm.inspectFee = formatToTwo(feeForm.inspectFee)" /></view>
-            <view class="fee-row"><text class="fee-label">repairFee 维修费</text><input class="fee-input" type="number" v-model="feeForm.repairFee" @blur="feeForm.repairFee = formatToTwo(feeForm.repairFee)" /></view>
-            <view class="fee-row"><text class="fee-label">keepFee 保管费</text><input class="fee-input" type="number" v-model="feeForm.keepFee" @blur="feeForm.keepFee = formatToTwo(feeForm.keepFee)" /></view>
-            <view class="fee-row"><text class="fee-label">packingFee 包装费</text><input class="fee-input" type="number" v-model="feeForm.packingFee" @blur="feeForm.packingFee = formatToTwo(feeForm.packingFee)" /></view>
-            <view class="fee-row"><text class="fee-label">OtherFee 其他费</text><input class="fee-input" type="number" v-model="feeForm.otherFee" @blur="feeForm.otherFee = formatToTwo(feeForm.otherFee)" /></view>
-            <view class="fee-total"><text class="fee-total-label">TotalFee 总费用</text><text class="fee-total-value">{{ totalFee() }}</text></view>
+            <view class="fees" v-if="index === currentDialogIndex">
+              <view class="fee-row"><text class="fee-label">InspectFee 检测费</text><input class="fee-input" type="number" v-model="feeForm.inspectFee" @blur="feeForm.inspectFee = formatToTwo(feeForm.inspectFee)" /></view>
+              <view class="fee-row"><text class="fee-label">repairFee 维修费</text><input class="fee-input" type="number" v-model="feeForm.repairFee" @blur="feeForm.repairFee = formatToTwo(feeForm.repairFee)" /></view>
+              <view class="fee-row"><text class="fee-label">keepFee 保管费</text><input class="fee-input" type="number" v-model="feeForm.keepFee" @blur="feeForm.keepFee = formatToTwo(feeForm.keepFee)" /></view>
+              <view class="fee-row"><text class="fee-label">packingFee 包装费</text><input class="fee-input" type="number" v-model="feeForm.packingFee" @blur="feeForm.packingFee = formatToTwo(feeForm.packingFee)" /></view>
+              <view class="fee-row"><text class="fee-label">OtherFee 其他费</text><input class="fee-input" type="number" v-model="feeForm.otherFee" @blur="feeForm.otherFee = formatToTwo(feeForm.otherFee)" /></view>
+              <view class="fee-total"><text class="fee-total-label">TotalFee 总费用</text><text class="fee-total-value">{{ totalFee() }}</text></view>
+            </view>
           </view>
-        </view>
+        </scroll-view>
 
         <view class="dialog-actions">
           <button class="btn btn-cancel" @click="closeSendDialog">Cancel</button>
@@ -157,6 +169,28 @@ const itemImagePreview = ref('')
 const canvasW = ref(750)
 const canvasH = ref(1000)
 const instance = getCurrentInstance()
+
+// Save current item's fee and image data before switching
+function saveCurrentItemData() {
+  const idx = currentDialogIndex.value
+  if (idx >= 0 && idx < dialogItems.value.length) {
+    const item = dialogItems.value[idx]
+    item._feeForm = { ...feeForm.value }
+    item._itemImagePath = itemImagePath.value
+    item._itemImagePreview = itemImagePreview.value
+  }
+}
+
+// Load item's stored fee and image data
+function loadItemData(item) {
+  if (item._feeForm) {
+    feeForm.value = { ...item._feeForm }
+  } else {
+    loadFeesFromItem(item)
+  }
+  itemImagePath.value = item._itemImagePath || ''
+  itemImagePreview.value = item._itemImagePreview || ''
+}
 
 // 加载包裹列表（待发）
 async function loadParcels(reset = false) {
@@ -364,10 +398,58 @@ function closeSendDialog() {
   itemImagePreview.value = ''
 }
 
+function selectItem(index) {
+  saveCurrentItemData()
+  currentDialogIndex.value = index
+  loadItemData(dialogItems.value[index])
+}
+
+async function saveAllItemsData() {
+  const savePromises = dialogItems.value.map(async (item) => {
+    if (!item._feeForm && !item._itemImagePath) return null
+    
+    const payload = {
+      itemId: item.itemId || item.id,
+      inspectFee: parseFloat(item._feeForm?.inspectFee) || 0,
+      repairFee: parseFloat(item._feeForm?.repairFee) || 0,
+      keepFee: parseFloat(item._feeForm?.keepFee) || 0,
+      packingFee: parseFloat(item._feeForm?.packingFee) || 0,
+      otherFee: parseFloat(item._feeForm?.otherFee) || 0
+    }
+    
+    try {
+      const r = await ApiHelper.put('/items', payload)
+      if (r && r.code === 1) {
+        Object.assign(item, payload)
+        
+        // Upload image if exists
+        if (item._itemImagePath) {
+          const currentItemId = item.itemId || item.id
+          try {
+            await uploadFile(item._itemImagePath, 'ITEM', currentItemId, 'ITEM_IMAGE', null)
+          } catch(e) {
+            console.warn('图片上传失败', e)
+          }
+        }
+      }
+      return r
+    } catch (error) {
+      console.error('保存item失败', error)
+      return null
+    }
+  })
+  
+  await Promise.all(savePromises)
+}
+
 async function handleDialogSent() {
   const idx = currentDialogIndex.value
   const item = dialogItems.value[idx]
   if (!item) return
+  
+  // Save current item data first
+  saveCurrentItemData()
+  
   const payload = {
     itemId: item.itemId || item.id,
     inspectFee: parseFloat(feeForm.value.inspectFee) || 0,
@@ -388,7 +470,7 @@ async function handleDialogSent() {
 
     Object.assign(item, payload)
 
-    // Upload item image if selected
+    // Upload current item image if selected
     const currentItemId = item.itemId || item.id
     if (itemImagePath.value && currentItemId) {
       try {
@@ -400,14 +482,20 @@ async function handleDialogSent() {
         console.warn('图片上传失败', e)
       }
     }
+    
     itemImagePath.value = ''
     itemImagePreview.value = ''
 
     if (idx < dialogItems.value.length - 1) {
       currentDialogIndex.value++
-      loadFeesFromItem(dialogItems.value[currentDialogIndex.value])
+      loadItemData(dialogItems.value[currentDialogIndex.value])
     } else {
+      // Save all items' data before submitting parcel status
       try {
+        uni.showLoading({ title: '保存所有Item数据...' })
+        await saveAllItemsData()
+        uni.hideLoading()
+        
         uni.showLoading({ title: '提交包裹状态...' })
         const updateData = { parcelId: dialogParcel.value.parcelId, status: 1, sendDate: new Date().toISOString().split('T')[0] }
         const pr = await ApiHelper.put('/parcels', updateData)
@@ -576,11 +664,21 @@ function goBack(){ smartBack() }
 
 /* dialog styles */
 .dialog-overlay{ position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999 }
-.dialog-card{ width:86%; max-height:85%; background:#fff; border-radius:12rpx; padding:30rpx; overflow:auto }
-.dialog-title{ font-size:32rpx; font-weight:600; margin-bottom:20rpx }
+.dialog-card{ width:86%; max-height:85%; background:#fff; border-radius:12rpx; padding:30rpx; display:flex; flex-direction:column }
+.dialog-title{ font-size:32rpx; font-weight:600; margin-bottom:20rpx; flex-shrink:0 }
+
+.items-scroll{ flex:1; overflow-y: auto; margin-bottom:20rpx; max-height:60vh }
+.item-card{ background:#f9f9f9; border-radius:8rpx; padding:20rpx; margin-bottom:16rpx; border:2rpx solid #e0e0e0; transition:all 0.2s }
+.item-card:last-child{ margin-bottom:0 }
+.item-card-active{ border-color:#409EFF; background:#fff; box-shadow:0 2rpx 8rpx rgba(64,158,255,0.15) }
+
+.item-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12rpx; padding-bottom:12rpx; border-bottom:2rpx solid #ddd }
+.item-seq{ font-size:28rpx; font-weight:600; color:#333 }
+.item-status{ font-size:22rpx; color:#409EFF; background:rgba(64,158,255,0.1); padding:4rpx 12rpx; border-radius:4rpx }
+
 .item-card .row{ display:flex; justify-content:space-between; padding:10rpx 0; border-bottom:1rpx solid #f0f0f0 }
-.fees{ margin-top:16rpx } .fee-row{ display:flex; justify-content:space-between; align-items:center; padding:8rpx 0 } .fee-input{ width:40%; text-align:right; border:1rpx solid #eee; padding:10rpx; border-radius:6rpx; font-size:24rpx; height:48rpx; line-height:48rpx } .fee-total{ display:flex; justify-content:space-between; align-items:center; padding:8rpx 0; border-top:1rpx solid #eee; margin-top:4rpx } .fee-total-label{ font-weight:600 } .fee-total-value{ width:40%; text-align:right; font-weight:600; font-size:24rpx; padding-right:12rpx }
-.dialog-actions{ display:flex; gap:16rpx; margin-top:20rpx } .dialog-actions .btn{ flex:1; font-size:26rpx; height:64rpx; line-height:64rpx }
+.fees{ margin-top:16rpx } .fee-row{ display:flex; justify-content:space-between; align-items:center; padding:12rpx 0 } .fee-input{ width:45%; text-align:right; border:1rpx solid #ddd; padding:16rpx 12rpx; border-radius:8rpx; font-size:28rpx; height:72rpx; line-height:40rpx; background:#fff } .fee-total{ display:flex; justify-content:space-between; align-items:center; padding:12rpx 0; border-top:2rpx solid #ddd; margin-top:8rpx } .fee-total-label{ font-weight:600; font-size:28rpx } .fee-total-value{ width:45%; text-align:right; font-weight:600; font-size:28rpx; padding-right:12rpx }
+.dialog-actions{ display:flex; gap:16rpx; flex-shrink:0 } .dialog-actions .btn{ flex:1; font-size:26rpx; height:64rpx; line-height:64rpx }
 .dialog-actions .btn-cancel{ background:#E6A23C; color:#fff; border:none } .dialog-actions .btn-primary{ background:#67C23A; color:#fff; border:none }
 
 .loading-more,.no-more{ text-align:center; padding:30rpx; font-size:28rpx; color:#999 }
