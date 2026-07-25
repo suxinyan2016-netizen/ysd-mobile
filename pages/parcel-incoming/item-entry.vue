@@ -320,7 +320,9 @@ async function handleSave() {
       isUnpacked: item.value.isUnpacked == null ? 0 : item.value.isUnpacked,
       iqcResult: item.value.iqcResult || null,
       receiveParcelId: item.value.receiveParcelId,
+      receive_parcel_id: item.value.receiveParcelId, // Add snake_case version for backend compatibility
       receivePackageNo: item.value.receivePackageNo,
+      receive_package_no: item.value.receivePackageNo, // Add snake_case version for backend compatibility
       isGood: (typeof item.value.isGood === 'undefined' || item.value.isGood === null) ? 1 : Number(item.value.isGood),
       tempKey: item.value.tempKey,
       createBy: userStore.userInfo?.name,
@@ -336,6 +338,15 @@ async function handleSave() {
     let itemId = item.value.itemId || null
     let res
     const previousItemId = item.value.itemId || null
+    
+    // Debug logging to check receiveParcelId value
+    console.debug('[handleSave] payload with receiveParcelId', { 
+      receiveParcelId: payload.receiveParcelId, 
+      receive_parcel_id: payload.receive_parcel_id,
+      parcelId: parcelId.value,
+      fullPayload: payload 
+    })
+    
     if (itemId) {
       // update existing item
       res = await ApiHelper.put('/items', { ...payload, itemId })

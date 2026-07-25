@@ -124,6 +124,14 @@
       }
     },
     {
+      "path": "pages/parcel-picking/index",
+      "style": {
+        "navigationBarTitleText": "拣货",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
       "path": "pages/parcel-inspect/index",
       "style": {
         "navigationBarTitleText": "验收包裹",

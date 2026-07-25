@@ -13,7 +13,7 @@
     <view class="search-bar">
       <view class="search-input">
         <text class="search-icon">🔍</text>
-        <input 
+        <input
           v-model="searchText"
           type="text"
           placeholder="搜索运单号"
@@ -22,6 +22,9 @@
       </view>
         <button class="search-btn" @click="handleSearch">
           搜索
+        </button>
+        <button class="picking-btn" @click="goToPicking">
+          拣货
         </button>
     </view>
     
@@ -81,6 +84,19 @@
       <view class="dialog-card">
         <text class="dialog-title">Item 信息 (共 {{ dialogItems.length }} 项)</text>
 
+        <view class="verify-input-row">
+          <input 
+            ref="verifyInputRef"
+            class="verify-input"
+            :class="{ 'verify-input-invalid': isInvalidInput }"
+            v-model="verifyInput"
+            type="text"
+            placeholder="输入商品号验证"
+            @confirm="handleVerifyInput"
+          />
+          <button class="verify-clear-btn" @click="clearVerifyInput">清空</button>
+        </view>
+
         <scroll-view class="items-scroll" scroll-y>
           <view 
             v-for="(item, index) in dialogItems" 
@@ -94,7 +110,7 @@
               <text class="item-status" v-if="index === currentDialogIndex">当前编辑</text>
             </view>
             <view class="row seq-row"><text class="label">SN</text><text class="value">{{ index + 1 }}</text></view>
-            <view class="row"><text class="label">ItemNo 商品号</text><text class="value">{{ item?.itemNo || item?.sku || '-' }}</text></view>
+            <view class="row"><text class="label">ItemNo 商品号</text><text class="value" :class="{ 'value-matched': isItemNoMatched(item?.itemNo || item?.sku) }">{{ item?.itemNo || item?.sku || '-' }}</text></view>
             <view class="row"><text class="label">Seller Part 商品名</text><text class="value">{{ item?.sellerPart || item?.name || '-' }}</text></view>
             <view class="row"><text class="label">Qty 数量</text><text class="value">{{ item?.qty ?? item?.quantity ?? '-' }}</text></view>
             <view class="info-split-row">
@@ -162,6 +178,12 @@ const dialogParcel = ref(null)
 const dialogItems = ref([])
 const currentDialogIndex = ref(0)
 const feeForm = ref({ inspectFee: '0.00', repairFee: '0.00', keepFee: '0.00', packingFee: '0.00', otherFee: '0.00' })
+
+// Verification input state
+const verifyInput = ref('')
+const isInvalidInput = ref(false)
+const matchedItemNos = ref(new Set())
+const verifyInputRef = ref(null)
 
 // image upload state
 const itemImagePath = ref('')
@@ -396,6 +418,40 @@ function closeSendDialog() {
   currentDialogIndex.value = 0
   itemImagePath.value = ''
   itemImagePreview.value = ''
+  verifyInput.value = ''
+  isInvalidInput.value = false
+  matchedItemNos.value = new Set()
+}
+
+function handleVerifyInput() {
+  const inputVal = verifyInput.value.trim()
+  if (!inputVal) return
+
+  const matchedItem = dialogItems.value.find(item => {
+    const itemNo = item?.itemNo || item?.sku
+    return itemNo && itemNo === inputVal
+  })
+
+  if (matchedItem) {
+    matchedItemNos.value.add(inputVal)
+    verifyInput.value = ''
+    isInvalidInput.value = false
+    nextTick(() => {
+      verifyInputRef.value?.focus()
+    })
+  } else {
+    isInvalidInput.value = true
+  }
+}
+
+function clearVerifyInput() {
+  verifyInput.value = ''
+  isInvalidInput.value = false
+}
+
+function isItemNoMatched(itemNo) {
+  if (!itemNo) return false
+  return matchedItemNos.value.has(itemNo)
 }
 
 function selectItem(index) {
@@ -574,6 +630,10 @@ async function loadParcelImages(parcel) {
 function handleSearch() { loadParcels(true) }
 function handleScan() { uni.scanCode({ success: (res) => { searchText.value = res.result; handleSearch() } }) }
 
+function goToPicking() {
+  uni.navigateTo({ url: '/pages/parcel-picking/index' })
+}
+
 function handleLogout() {
   uni.showModal({ title: '提示', content: '确定要注销登录吗？', success: (res)=>{ if (res.confirm){ userStore.logout().finally(()=>{ try{ uni.reLaunch({ url: '/pages/login/index' }) } catch(e){ uni.navigateTo({ url: '/pages/login/index' }) } }) } } })
 }
@@ -654,18 +714,41 @@ function goBack(){ smartBack() }
     border: none;
     margin-right: 8rpx;
   }
+
+  .picking-btn {
+    width: 105rpx;
+    height: 60rpx;
+    line-height: 60rpx;
+    text-align: center;
+    background: linear-gradient(90deg, #67C23A, #85CE61);
+    color: #fff;
+    border-radius: 8rpx;
+    font-size: 26rpx;
+    font-weight: 400;
+    padding: 0 16rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6rpx 18rpx rgba(103,194,58,0.12);
+    border: none;
+  }
 }
 
 .parcel-list { flex:1; padding:20rpx }
 .parcel-card { background:#fff; border-radius:16rpx; margin-bottom:20rpx; box-shadow:0 2rpx 12rpx rgba(0,0,0,0.08); overflow:hidden }
 .card-main { display:flex; align-items:center; justify-content:space-between; padding:30rpx }
 .package-info { flex:1; .package-no{ font-size:32rpx; font-weight:bold; color:#333 } }
-.action-buttons { display:flex; gap:15rpx; button{ padding:0 30rpx; height:60rpx; line-height:60rpx; font-size:26rpx; border-radius:8rpx } .btn-label{ background:transparent; color:#409EFF } .btn-sent{ background:#409EFF; color:#fff } }
+.action-buttons { display:flex; gap:15rpx; button{ padding:0 30rpx; height:60rpx; line-height:60rpx; font-size:26rpx; border-radius:8rpx } .btn-label{ background:#E6F1FC; color:#409EFF; border:2rpx solid #409EFF; box-shadow:0 2rpx 8rpx rgba(64,158,255,0.15) } .btn-sent{ background:#409EFF; color:#fff } }
 
 /* dialog styles */
 .dialog-overlay{ position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999 }
 .dialog-card{ width:86%; max-height:85%; background:#fff; border-radius:12rpx; padding:30rpx; display:flex; flex-direction:column }
 .dialog-title{ font-size:32rpx; font-weight:600; margin-bottom:20rpx; flex-shrink:0 }
+
+.verify-input-row{ display:flex; align-items:center; gap:12rpx; margin-bottom:20rpx; flex-shrink:0 }
+.verify-input{ width:400rpx; height:60rpx; padding:0 20rpx; border:2rpx solid #ddd; border-radius:8rpx; font-size:28rpx; background:#fff }
+.verify-input-invalid{ color:#F56C6C; border-color:#F56C6C }
+.verify-clear-btn{ width:120rpx; height:60rpx; line-height:60rpx; font-size:24rpx; background:#E6A23C; color:#fff; border:none; border-radius:8rpx }
 
 .items-scroll{ flex:1; overflow-y: auto; margin-bottom:20rpx; max-height:60vh }
 .item-card{ background:#f9f9f9; border-radius:8rpx; padding:20rpx; margin-bottom:16rpx; border:2rpx solid #e0e0e0; transition:all 0.2s }
@@ -677,6 +760,7 @@ function goBack(){ smartBack() }
 .item-status{ font-size:22rpx; color:#409EFF; background:rgba(64,158,255,0.1); padding:4rpx 12rpx; border-radius:4rpx }
 
 .item-card .row{ display:flex; justify-content:space-between; padding:10rpx 0; border-bottom:1rpx solid #f0f0f0 }
+.item-card .row .value-matched{ color:#67C23A; font-weight:600 }
 .fees{ margin-top:16rpx } .fee-row{ display:flex; justify-content:space-between; align-items:center; padding:12rpx 0 } .fee-input{ width:45%; text-align:right; border:1rpx solid #ddd; padding:16rpx 12rpx; border-radius:8rpx; font-size:28rpx; height:72rpx; line-height:40rpx; background:#fff } .fee-total{ display:flex; justify-content:space-between; align-items:center; padding:12rpx 0; border-top:2rpx solid #ddd; margin-top:8rpx } .fee-total-label{ font-weight:600; font-size:28rpx } .fee-total-value{ width:45%; text-align:right; font-weight:600; font-size:28rpx; padding-right:12rpx }
 .dialog-actions{ display:flex; gap:16rpx; flex-shrink:0 } .dialog-actions .btn{ flex:1; font-size:26rpx; height:64rpx; line-height:64rpx }
 .dialog-actions .btn-cancel{ background:#E6A23C; color:#fff; border:none } .dialog-actions .btn-primary{ background:#67C23A; color:#fff; border:none }
