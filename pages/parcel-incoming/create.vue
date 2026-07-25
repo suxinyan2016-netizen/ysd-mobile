@@ -44,6 +44,11 @@
               <view class="receiver-display">{{ currentUserName }}</view>
             </view>
           </view>
+        <!-- 库位 row -->
+        <view class="info-row">
+          <text class="label">库位:</text>
+          <input class="form-input slot-input" v-model="parcel.slot" placeholder="请输入库位" />
+        </view>
       </view>
 
       <view class="section upload-files">
@@ -114,7 +119,7 @@ function scanBarcode() {
   })
 }
 
-const parcel = ref({ packageNo: '' })
+const parcel = ref({ packageNo: '', slot: '' })
 // keep packageType as a standalone ref so radio-group binding works reliably
 // use string values for radio to ensure uni-app radio-group selects correctly
 const packageType = ref('2')
@@ -498,6 +503,7 @@ onLoad(() => {
   .info-row:last-child { padding-bottom:0 }
   .label { width:auto; color:#666; margin-right:20rpx; text-align:right; font-size:26rpx !important }
   .form-input { width:360rpx; flex:none; height:70rpx; border:none; border-bottom:1rpx solid #e6e6e6; border-radius:0; padding:0 8rpx; font-size:22rpx }
+  .slot-input { width:200rpx; flex:none; height:70rpx; border:none; border-bottom:1rpx solid #e6e6e6; border-radius:0; padding:0 8rpx; font-size:22rpx }
   .scan-btn { display:flex; align-items:center; gap:4rpx; padding:0 14rpx; height:60rpx; background:#f0f4ff; border-radius:8rpx; flex-shrink:0; cursor:pointer }
   .scan-icon { font-size:28rpx; color:#409EFF; line-height:1 }
   .scan-text { font-size:22rpx; color:#409EFF }

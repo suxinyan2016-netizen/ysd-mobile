@@ -24,8 +24,8 @@
           <text class="value">{{ parcel.packageNo }}</text>
         </view>
         <view class="info-row">
-          <text class="label">Process ID:</text>
-          <text class="value">{{ parcel.processId || '-' }}</text>
+          <text class="label">库位 (Slot):</text>
+          <input class="input-value" v-model="parcel.slot" placeholder="请输入库位" />
         </view>
       </view>
       
@@ -166,12 +166,22 @@
         
         <view class="form-item">
           <text class="form-label">IQC结果 (IQC Result)</text>
-          <input 
-            class="form-input" 
+          <input
+            class="form-input"
             type="text"
             v-model="itemForm.iqcResult"
             placeholder="请输入IQC结果"
             maxlength="500"
+          />
+        </view>
+
+        <view class="form-item">
+          <text class="form-label">库位 (Slot)</text>
+          <input
+            class="form-input"
+            type="text"
+            v-model="itemForm.slot"
+            placeholder="请输入库位"
           />
         </view>
       </view>
@@ -307,6 +317,7 @@ const itemForm = ref({
   isGood: 1,
   sellerPart: '',
   iqcResult: '',
+  slot: '',
   dictId: null
 })
 
@@ -472,6 +483,8 @@ async function loadParcelDetail(parcelId) {
     if (result.code === 1 && result.data) {
       parcel.value = result.data
       console.log('parcel.value 已设置:', parcel.value)
+      // Ensure slot field is loaded from backend
+      parcel.value.slot = result.data.slot || ''
       // Normalize item identifiers: backend sometimes returns `id` instead of `itemId` (APK/base may differ).
       // Ensure downstream code always can use `item.itemId`.
       try {
@@ -698,6 +711,7 @@ async function loadItemForm() {
       isUnpacked: item.isUnpacked ?? 0,
       isGood: item.isGood ?? 1,
       iqcResult: item.iqcResult ?? '',
+      slot: item.slot ?? '',
       dictId: item.dictId ?? null
     }
     // set selectedCategoryIndex based on item.dictId
@@ -1282,6 +1296,7 @@ async function saveItemToServer() {
     isUnpacked: itemForm.value.isUnpacked,
     isGood: itemForm.value.isGood,
     iqcResult: itemForm.value.iqcResult || '',
+    slot: itemForm.value.slot || '',
     itemStatus: 1,
     ownerId: item.ownerId || parcel.value.ownerId || currentUserId,
     keeperId: currentUserId,
@@ -1323,6 +1338,9 @@ async function saveParcel() {
 
     uni.showLoading({ title: '保存包裹中...' })
 
+    // 保存当前 slot 值
+    const currentSlot = parcel.value.slot
+
     // 发送 parcel 对象到后端更新
     const payload = Object.assign({}, parcel.value)
     const result = await ApiHelper.put('/parcels', payload)
@@ -1332,6 +1350,10 @@ async function saveParcel() {
       uni.showToast({ title: '包裹保存成功', icon: 'success' })
       // 重新加载最新包裹数据
       await loadParcelDetail(parcel.value.parcelId)
+      // 恢复 slot 值（如果后端没有返回 slot）
+      if (!parcel.value.slot && currentSlot) {
+        parcel.value.slot = currentSlot
+      }
     } else {
       uni.showToast({ title: result?.msg || '包裹保存失败', icon: 'none' })
     }
@@ -1577,6 +1599,16 @@ function goBack() {
     flex: 1;
     color: #333;
     font-weight: 500;
+  }
+
+  .input-value {
+    flex: 1;
+    padding: 8rpx 16rpx;
+    border: 1rpx solid #ddd;
+    border-radius: 8rpx;
+    font-size: 28rpx;
+    color: #333;
+    background: #fff;
   }
 }
 

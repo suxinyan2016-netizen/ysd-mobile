@@ -66,6 +66,12 @@
           <text class="label">验货结果:</text>
           <input class="form-input" v-model="item.iqcResult" placeholder="请输入验货结果" />
         </view>
+
+        <!-- 新增行: 库位 -->
+        <view class="info-row">
+          <text class="label">库位 (Slot):</text>
+          <input class="form-input" v-model="item.slot" placeholder="请输入库位" />
+        </view>
       </view>
 
       <view class="section">
@@ -142,7 +148,7 @@ const packageNo = ref((route && route.query && route.query.packageNo) || (route 
 // ownerId passed from the parcel create page (货主选择)，fallback null
 const ownerIdFromRoute = ref((route && route.query && route.query.ownerId) || (route && route.params && route.params.ownerId) || null)
 
-const item = ref({ itemNo: '', sellerPart: '', tempKey: '', receiveParcelId: parcelId.value || null, receivePackageNo: packageNo.value || '', dictId: null, qty: 1, isUnpacked: 0, isGood: 1, iqcResult: '' })
+const item = ref({ itemNo: '', sellerPart: '', tempKey: '', receiveParcelId: parcelId.value || null, receivePackageNo: packageNo.value || '', dictId: null, qty: 1, isUnpacked: 0, isGood: 1, iqcResult: '', slot: '' })
 const itemImages = ref([])
 const isSaving = ref(false)
 const dictOptions = ref([])
@@ -308,6 +314,24 @@ async function handleSave() {
     // ensure tempKey for associating images if backend doesn't return id
     if (!item.value.tempKey) item.value.tempKey = 'tk_' + Date.now() + '_' + Math.floor(Math.random()*10000)
 
+    // Determine slot value: if item.slot is empty, try to get from parcel
+    let slotValue = item.value.slot || ''
+    if (!slotValue && item.value.receiveParcelId) {
+      try {
+        const parcelRes = await ApiHelper.get('/parcels', { parcelId: item.value.receiveParcelId, pageSize: 1 })
+        if (parcelRes && parcelRes.code === 1 && parcelRes.data) {
+          const parcelData = Array.isArray(parcelRes.data) ? parcelRes.data[0] : 
+                            Array.isArray(parcelRes.data.rows) ? parcelRes.data.rows[0] : 
+                            parcelRes.data
+          if (parcelData && parcelData.slot) {
+            slotValue = parcelData.slot
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch parcel slot:', err)
+      }
+    }
+
     // prepare payload matching backend Item POJO
     const payload = {
       itemNo: item.value.itemNo,
@@ -319,6 +343,7 @@ async function handleSave() {
       qty: parseInt(item.value.qty, 10) || 1,
       isUnpacked: item.value.isUnpacked == null ? 0 : item.value.isUnpacked,
       iqcResult: item.value.iqcResult || null,
+      slot: slotValue,
       receiveParcelId: item.value.receiveParcelId,
       receive_parcel_id: item.value.receiveParcelId, // Add snake_case version for backend compatibility
       receivePackageNo: item.value.receivePackageNo,
