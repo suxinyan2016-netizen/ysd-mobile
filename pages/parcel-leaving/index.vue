@@ -182,7 +182,7 @@ const feeForm = ref({ inspectFee: '0.00', repairFee: '0.00', keepFee: '0.00', pa
 // Verification input state
 const verifyInput = ref('')
 const isInvalidInput = ref(false)
-const matchedItemNos = ref(new Set())
+const matchedItemNos = ref([])
 const verifyInputRef = ref(null)
 
 // image upload state
@@ -420,7 +420,7 @@ function closeSendDialog() {
   itemImagePreview.value = ''
   verifyInput.value = ''
   isInvalidInput.value = false
-  matchedItemNos.value = new Set()
+  matchedItemNos.value = []
 }
 
 function handleVerifyInput() {
@@ -433,7 +433,9 @@ function handleVerifyInput() {
   })
 
   if (matchedItem) {
-    matchedItemNos.value.add(inputVal)
+    if (!matchedItemNos.value.includes(inputVal)) {
+      matchedItemNos.value.push(inputVal)
+    }
     verifyInput.value = ''
     isInvalidInput.value = false
     nextTick(() => {
@@ -451,7 +453,7 @@ function clearVerifyInput() {
 
 function isItemNoMatched(itemNo) {
   if (!itemNo) return false
-  return matchedItemNos.value.has(itemNo)
+  return matchedItemNos.value.includes(itemNo)
 }
 
 function selectItem(index) {
@@ -577,6 +579,9 @@ async function handleDialogSent() {
 
 // 查看label
 async function viewLabel(parcel) {
+  // 先加载label图片
+  await loadParcelImages(parcel)
+  
   if (!parcel.labelImages || parcel.labelImages.length === 0) {
     uni.showToast({ title: '暂无Label图片', icon: 'none' })
     return
