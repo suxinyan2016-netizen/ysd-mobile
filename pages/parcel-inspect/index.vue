@@ -1527,7 +1527,8 @@ async function updateParcelStatus() {
     receivedDate: currentDate
   }
 
-  console.log('更新包裹状态:', updateData)
+  console.log('更新包裹状态 - updateData:', JSON.stringify(updateData))
+  console.log('更新包裹状态 - currentDate:', currentDate)
 
   try {
     const result = await ApiHelper.put('/parcels', updateData)

@@ -207,6 +207,7 @@ export class ApiHelper {
     return this.request(url, 'POST', data, headers)
   }
   static put(url, data = {}, headers = {}) {
+    console.log(`[ApiHelper.put] url=${url}, data=`, JSON.stringify(data))
     return this.request(url, 'PUT', data, headers)
   }
   static delete(url, data = {}, headers = {}) {

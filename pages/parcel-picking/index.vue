@@ -86,10 +86,10 @@ const groupedItems = computed(() => {
   
   allItems.value.forEach(item => {
     const slot = item.slot || '未分配'
-    const receivingTrackingNo = item.receivingTrackingNo || '无'
+    const receivePackageNo = item.receivePackageNo || item.receivingTrackingNo || '无'
     const itemNo = item.itemNo || item.sku || '未知'
     
-    const groupKey = `${slot}|${receivingTrackingNo}`
+    const groupKey = `${slot}|${receivePackageNo}`
     
     if (!groups[groupKey]) {
       groups[groupKey] = {
@@ -186,9 +186,9 @@ function mergeItems(items) {
   
   items.forEach(item => {
     const slot = item.slot || ''
-    const receivingTrackingNo = item.receivingTrackingNo || ''
+    const receivePackageNo = item.receivePackageNo || item.receivingTrackingNo || ''
     const itemNo = item.itemNo || item.sku || ''
-    const key = `${slot}|${receivingTrackingNo}|${itemNo}`
+    const key = `${slot}|${receivePackageNo}|${itemNo}`
     
     if (mergedMap.has(key)) {
       const existing = mergedMap.get(key)

@@ -297,7 +297,8 @@ async function handleSubmit(parcel) {
         if (res.confirm) {
           uni.showLoading({ title: '提交中...' })
           try {
-            const result = await ApiHelper.post('/parcels', { parcelId: parcel.parcelId, status: 2 })
+            const currentDate = new Date().toISOString().split('T')[0]
+            const result = await ApiHelper.post('/parcels', { parcelId: parcel.parcelId, status: 2, receivedDate: currentDate })
             uni.hideLoading()
             if (result && result.code === 1) {
               uni.showToast({ title: '提交成功', icon: 'success' })

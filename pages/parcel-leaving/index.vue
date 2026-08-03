@@ -604,7 +604,8 @@ function isPDF(url) { if (!url) return false; return url.toLowerCase().endsWith(
 
 function previewFile(file) {
   const url = file.imageUrl
-  const fullUrl = url.startsWith('http') ? url : 'http://localhost:8080' + url
+  const host = ApiHelper.getHost()
+  const fullUrl = url.startsWith('http') ? url : host + url
   if (isPDF(url)) {
     // #ifdef H5
     window.open(fullUrl, '_blank')

@@ -498,7 +498,8 @@ async function handleSubmit() {
       await handleSave()
 
       // only update parcel status to 2 on submit (do not touch item statuses here)
-      await ApiHelper.post('/parcels', { parcelId: parcelId.value, status: 2 })
+      const currentDate = new Date().toISOString().split('T')[0]
+      await ApiHelper.post('/parcels', { parcelId: parcelId.value, status: 2, receivedDate: currentDate })
 
       uni.hideLoading()
       uni.showToast({ title: '提交成功', icon: 'success' })
