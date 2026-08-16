@@ -148,7 +148,7 @@ const packageNo = ref((route && route.query && route.query.packageNo) || (route 
 // ownerId passed from the parcel create page (货主选择)，fallback null
 const ownerIdFromRoute = ref((route && route.query && route.query.ownerId) || (route && route.params && route.params.ownerId) || null)
 
-const item = ref({ itemNo: '', sellerPart: '', tempKey: '', receiveParcelId: parcelId.value || null, receivePackageNo: packageNo.value || '', dictId: null, qty: 1, isUnpacked: 0, isGood: 1, iqcResult: '', slot: '' })
+const item = ref({ itemNo: '', sellerPart: '', tempKey: '', receiveParcelId: parcelId.value || null, receivePackageNo: packageNo.value || '', dictId: null, qty: 1, isUnpacked: 0, isGood: 1, iqcResult: '', slot: '', ownerId: ownerIdFromRoute.value || null })
 const itemImages = ref([])
 const isSaving = ref(false)
 const dictOptions = ref([])
@@ -351,7 +351,7 @@ async function handleSave() {
       isGood: (typeof item.value.isGood === 'undefined' || item.value.isGood === null) ? 1 : Number(item.value.isGood),
       tempKey: item.value.tempKey,
       createBy: userStore.userInfo?.name,
-      // new fields required: receivedDate (current date), keeperId (current user id), ownerId (from first page), ispaid, isconsigned
+      // new fields required: receivedDate (current date), keeperId (current user id), ownerId (from parcel), ispaid, isconsigned
       receivedDate: new Date().toISOString().split('T')[0],
       keeperId: userStore.userInfo?.id || (function(){ try { const s = uni.getStorageSync('loginUser'); return s? JSON.parse(s).id:null } catch(e){return null} })(),
       ownerId: ownerIdFromRoute && ownerIdFromRoute.value ? Number(ownerIdFromRoute.value) : (item.value.ownerId || null),

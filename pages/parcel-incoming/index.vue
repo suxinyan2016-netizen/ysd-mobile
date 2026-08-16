@@ -281,7 +281,8 @@ async function goToInspect(parcel) {
 // 跳转增加ITEM页面
 function goToAddItem(parcel) {
   try {
-    uni.navigateTo({ url: `/pages/parcel-incoming/item-entry?parcelId=${parcel.parcelId}&packageNo=${encodeURIComponent(parcel.packageNo)}&ownerId=${parcel.ownerId}` })
+    const ownerId = parcel.ownerId || parcel.owner_id
+    uni.navigateTo({ url: `/pages/parcel-incoming/item-entry?parcelId=${parcel.parcelId}&packageNo=${encodeURIComponent(parcel.packageNo)}&ownerId=${ownerId}` })
   } catch (e) {
     uni.showToast({ title: '无法打开添加页面', icon: 'none' })
   }
