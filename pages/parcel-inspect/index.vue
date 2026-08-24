@@ -25,7 +25,7 @@
         </view>
         <view class="info-row">
           <text class="label">库位 (Slot):</text>
-          <input class="input-value" v-model="parcel.slot" placeholder="请输入库位" />
+          <input class="form-input" v-model="parcel.slot" placeholder="请输入库位" />
         </view>
       </view>
       
@@ -89,94 +89,81 @@
     <!-- Step 2+: 商品验收 -->
     <scroll-view v-else-if="currentItem" class="step-content" scroll-y>
       <!-- 商品信息表单 -->
-      <view class="form-card">
-        <view class="form-row">
-          <view class="form-item col">
-            <text class="form-label">商品编号 (Item No)</text>
-            <text class="form-value">{{ currentItem.itemNo || '-' }}</text>
-          </view>
-          <view class="form-item col">
-            <text class="form-label">数量 (Qty) *</text>
-            <input 
-              class="form-input" 
-              type="digit" 
-              v-model="itemForm.qty"
-              placeholder="请输入数量"
-              @blur="validateQty"
-            />
+      <view class="info-card">
+        <text class="card-title">商品信息</text>
+        <view class="info-row">
+          <text class="label">商品号:</text>
+          <text class="value">{{ currentItem.itemNo || '-' }}</text>
+        </view>
+
+        <view class="info-row">
+          <text class="label">商品名:</text>
+          <input
+            class="form-input"
+            type="text"
+            v-model="itemForm.sellerPart"
+            placeholder="请输入商品名"
+            maxlength="200"
+          />
+        </view>
+
+        <view class="info-row">
+          <text class="label">类别:</text>
+          <picker mode="selector" :range="categoryNames" @change="onCategoryChange" :value="selectedCategoryIndex">
+            <view class="form-input picker-display editable" style="display:flex;align-items:center;justify-content:space-between;">
+              <text>{{ (categoryNames[selectedCategoryIndex]) || '请选择类别' }}</text>
+              <text>▾</text>
+            </view>
+          </picker>
+        </view>
+        
+        <view class="info-row">
+          <text class="label">Qty:</text>
+          <input
+            class="form-input"
+            type="number"
+            v-model.number="itemForm.qty"
+            placeholder="请输入数量"
+            @blur="validateQty"
+            min="1"
+            step="1"
+          />
+        </view>
+        
+        
+        <view class="info-row">
+          <text class="label">客户反馈:</text>
+          <text class="value">{{ currentItem.customerFeedback || '-' }}</text>
+        </view>
+        
+        <view class="info-row">
+          <text class="label">是否良品:</text>
+          <view class="radio-group">
+            <view :class="['radio-item', itemForm.isGood === 1 ? 'active' : '']" @click="itemForm.isGood = 1">良品</view>
+            <view :class="['radio-item', itemForm.isGood === 0 ? 'active' : '']" @click="itemForm.isGood = 0">次品</view>
           </view>
         </view>
 
-        <view class="form-row">
-          <view class="form-item col">
-            <text class="form-label">类别 (Category)</text>
-            <picker mode="selector" :range="categoryNames" @change="onCategoryChange" :value="selectedCategoryIndex">
-              <view class="form-input" style="display:flex;align-items:center;justify-content:space-between;">
-                <text>{{ (categoryNames[selectedCategoryIndex]) || '请选择类别' }}</text>
-                <text>▾</text>
-              </view>
-            </picker>
-          </view>
-          <view class="form-item col">
-            <text class="form-label">商品名 (Sellerpart)</text>
-            <input 
-              class="form-input" 
-              type="text"
-              v-model="itemForm.sellerPart"
-              placeholder="请输入商品名"
-              maxlength="200"
-            />
-          </view>
-        </view>
-
-        <view class="form-item">
-          <text class="form-label">客户反馈 (Customer Feedback)</text>
-          <text class="form-value">{{ currentItem.customerFeedback || '-' }}</text>
-        </view>
-
-        <view class="form-row">
-          <view class="form-item col">
-            <text class="form-label">是否拆封 (isPacked)</text>
-            <radio-group class="radio-group" @change="onUnpackedChange">
-              <label class="radio-item">
-                <radio value="0" :checked="itemForm.isUnpacked === 0" />
-                <text>未拆</text>
-              </label>
-              <label class="radio-item">
-                <radio value="1" :checked="itemForm.isUnpacked === 1" />
-                <text>已拆</text>
-              </label>
-            </radio-group>
-          </view>
-
-          <view class="form-item col">
-            <text class="form-label">是否良品 (isGood)</text>
-            <radio-group class="radio-group" @change="onIsGoodChange">
-              <label class="radio-item">
-                <radio value="0" :checked="itemForm.isGood === 0" />
-                <text>坏件</text>
-              </label>
-              <label class="radio-item">
-                <radio value="1" :checked="itemForm.isGood === 1" />
-                <text>良品</text>
-              </label>
-            </radio-group>
+        <view class="info-row">
+          <text class="label">是否拆封:</text>
+          <view class="radio-group">
+            <view :class="['radio-item', itemForm.isUnpacked === 0 ? 'active' : '']" @click="itemForm.isUnpacked = 0">未拆封</view>
+            <view :class="['radio-item', itemForm.isUnpacked === 1 ? 'active' : '']" @click="itemForm.isUnpacked = 1">已拆封</view>
           </view>
         </view>
         
-        <view class="form-item">
-          <text class="form-label">IQC结果 (IQC Result)</text>
+        <view class="info-row">
+          <text class="label">验货结果:</text>
           <input
             class="form-input"
             type="text"
             v-model="itemForm.iqcResult"
-            placeholder="请输入IQC结果"
+            placeholder="请输入验货结果"
             maxlength="500"
           />
         </view>
-
-        <view class="form-item">
-          <text class="form-label">库位 (Slot)</text>
+        <view class="info-row">
+          <text class="label">库位 (Slot):</text>
           <input
             class="form-input"
             type="text"
@@ -213,17 +200,19 @@
       <!-- 操作按钮 -->
       <view class="action-btns">
         <button class="btn btn-default" @click="previousStep">上一步</button>
-        <button class="btn btn-save" @click="handleSaveClick">保存</button>
-        <button 
+        <button class="btn btn-save" :disabled="isSaving" @click="handleSaveClick">保存</button>
+        <button
           v-if="currentItemIndex < itemCount - 1"
-          class="btn btn-primary" 
+          class="btn btn-primary"
+          :disabled="isSaving"
           @click="nextStep"
         >
           下一步
         </button>
-        <button 
+        <button
           v-else
-          class="btn btn-warning" 
+          class="btn btn-warning"
+          :disabled="isSaving"
           @click="handleSubmit"
         >
           提交
@@ -1722,6 +1711,20 @@ function goBack() {
 .col-seller { flex: 4; }
 .col-qty { flex: 1; text-align: right; }
 
+/* Info card styles (aligned with parcel-incoming/item-entry.vue) */
+.info-card { background:#fff; border-radius:16rpx; padding:30rpx; margin-bottom:20rpx }
+.card-title { display:block; font-size:30rpx; font-weight:700; color:#333; margin-bottom:12rpx }
+.info-row { display:flex; justify-content:flex-start; align-items:center; gap:12rpx; padding:9rpx 0; border-bottom:none; font-size:24rpx }
+.info-row:last-child { padding-bottom:0 }
+.label { width:160rpx; color:#666; margin-right:12rpx; text-align:left; font-size:22rpx }
+.value { color:#333; font-size:22rpx }
+.form-input { width:100%; flex:1; height:70rpx; border:none; border-bottom:1rpx solid #e6e6e6; border-radius:0; padding:0 8rpx; font-size:22rpx }
+.picker-display { height:70rpx; line-height:70rpx }
+.radio-group { display:flex; gap:20rpx }
+.radio-item { padding:10rpx 20rpx; border:1rpx solid #ddd; border-radius:20rpx; color:#666; cursor:pointer; background:#fff }
+.radio-item.active { background:#409EFF; color:#fff; border-color:#409EFF }
+
+/* Legacy form styles (kept for Step 1) */
 .form-card {
   background: #fff;
   border-radius: 16rpx;
@@ -1760,7 +1763,7 @@ function goBack() {
   font-weight: 500;
 }
 
-.form-input {
+.form-input.legacy {
   width: 100%;
   height: 70rpx;
   border: 1rpx solid #ddd;
@@ -1784,12 +1787,12 @@ function goBack() {
   line-height: 1.5;
 }
 
-.radio-group {
+.radio-group.legacy {
   display: flex;
   gap: 40rpx;
 }
 
-.radio-item {
+.radio-item.legacy {
   display: flex;
   align-items: center;
   font-size: 28rpx;
