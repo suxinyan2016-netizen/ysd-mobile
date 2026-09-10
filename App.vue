@@ -48,32 +48,98 @@ onMounted(() => {
 
   setupErrorHandling()
 
-  // 重要：完全禁用自动跳转，手动控制路由
-  setTimeout(() => {
+  // 检查登录状态并自动跳转
+  setTimeout(async () => {
     try {
-      console.log('开始检查登录状态（仅检查，不跳转）')
+      console.log('开始检查登录状态')
       const userStore = useUserStore()
 
-      // 仅检查，不自动跳转
       const savedToken = uni.getStorageSync('token')
       const savedUser = uni.getStorageSync('loginUser')
+      const tokenExpiry = uni.getStorageSync('tokenExpiry')
+      const refreshToken = uni.getStorageSync('refreshToken')
+      const refreshExpiry = uni.getStorageSync('refreshTokenExpiry')
 
+      // 检查refresh token是否过期
+      let isRefreshTokenValid = false
+      if (refreshToken) {
+        if (refreshExpiry) {
+          const expiryTime = parseInt(refreshExpiry)
+          const currentTime = Date.now()
+          isRefreshTokenValid = currentTime < expiryTime
+          console.log('Refresh token过期检查:', { expiryTime, currentTime, isRefreshTokenValid })
+        } else {
+          // 没有过期时间，默认有效
+          isRefreshTokenValid = true
+        }
+      }
+
+      // 检查access token是否过期
+      let isTokenValid = false
       if (savedToken && savedUser) {
-        console.log('检测到已登录，设置用户状态')
-        userStore.token = savedToken
+        if (tokenExpiry) {
+          const expiryTime = parseInt(tokenExpiry)
+          const currentTime = Date.now()
+          isTokenValid = currentTime < expiryTime
+          console.log('Token过期检查:', { expiryTime, currentTime, isTokenValid })
+        } else {
+          // 没有过期时间，默认有效
+          isTokenValid = true
+        }
+      }
+
+      // 如果access token过期但refresh token有效，尝试刷新token
+      if (!isTokenValid && isRefreshTokenValid) {
+        console.log('Access token过期但refresh token有效，尝试刷新')
         try {
-          userStore.userInfo = JSON.parse(savedUser)
+          const refreshResult = await userStore.refreshToken()
+          if (refreshResult.success) {
+            console.log('Token刷新成功，更新登录状态')
+            isTokenValid = true
+            // 刷新后重新获取token
+            const newToken = uni.getStorageSync('token')
+            const newUser = uni.getStorageSync('loginUser')
+            userStore.token = newToken
+            userStore.userInfo = JSON.parse(newUser)
+            userStore.isLoggedIn = true
+          } else {
+            console.log('Token刷新失败:', refreshResult.message)
+          }
+        } catch (refreshError) {
+          console.error('Token刷新过程出错:', refreshError)
+        }
+      }
+
+      if (isTokenValid) {
+        console.log('检测到有效登录，设置用户状态并跳转首页')
+        userStore.token = uni.getStorageSync('token')
+        try {
+          userStore.userInfo = JSON.parse(uni.getStorageSync('loginUser'))
           userStore.isLoggedIn = true
+          // 自动跳转到首页
+          uni.switchTab({ url: '/pages/home/index' })
         } catch (e) {
           console.error('解析用户信息失败:', e)
           userStore.userInfo = null
           userStore.isLoggedIn = false
+          // 跳转到登录页
+          uni.redirectTo({ url: '/pages/login/index' })
         }
       } else {
-        console.log('未登录状态')
+        console.log('未登录或所有token已过期，跳转到登录页')
         userStore.token = ''
         userStore.userInfo = null
         userStore.isLoggedIn = false
+        // 清理过期的token
+        if (savedToken) {
+          uni.removeStorageSync('token')
+          uni.removeStorageSync('loginUser')
+          uni.removeStorageSync('tokenExpiry')
+          uni.removeStorageSync('refreshToken')
+          uni.removeStorageSync('refreshTokenExpiry')
+        }
+        // 跳转到登录页
+        uni.redirectTo({ url: '/pages/login/index' })
       }
 
       console.log('用户状态检查完成:', {
@@ -83,7 +149,8 @@ onMounted(() => {
 
     } catch (error) {
       console.error('初始化用户状态时出错:', error)
-      // 不进行任何跳转
+      // 出错时跳转到登录页
+      uni.redirectTo({ url: '/pages/login/index' })
     }
   }, 500)
 
