@@ -3,6 +3,7 @@
 import { onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import GlobalImageViewer from '@/components/GlobalImageViewer.vue'
+import { checkAndHandleUpdate } from '@/utils/versionUpdate.js'
 
 // 设置全局错误处理
 const setupErrorHandling = () => {
@@ -47,6 +48,13 @@ onMounted(() => {
   console.log('App Launch - 应用启动')
 
   setupErrorHandling()
+
+  // 检查应用更新
+  // #ifdef APP-PLUS
+  setTimeout(() => {
+    checkAndHandleUpdate(true)
+  }, 2000)
+  // #endif
 
   // 检查登录状态并自动跳转
   setTimeout(async () => {

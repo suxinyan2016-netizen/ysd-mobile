@@ -299,15 +299,35 @@ async function handleSubmit(parcel) {
           uni.showLoading({ title: '提交中...' })
           try {
             const currentDate = new Date().toISOString().split('T')[0]
+            
+            // 1. 更新包裹状态
             const result = await ApiHelper.post('/parcels', { parcelId: parcel.parcelId, status: 2, receivedDate: currentDate })
-            uni.hideLoading()
-            if (result && result.code === 1) {
-              uni.showToast({ title: '提交成功', icon: 'success' })
-              // 刷新包裹列表
-              loadParcels(true)
-            } else {
+            
+            if (!(result && result.code === 1)) {
+              uni.hideLoading()
               uni.showToast({ title: result?.msg || '提交失败', icon: 'none' })
+              return
             }
+            
+            // 2. 更新包裹内所有item的状态和receivedDate
+            const items = parcel.items || parcel.itemList || []
+            if (items && items.length > 0) {
+              for (const item of items) {
+                const itemId = item.itemId || item.id
+                if (itemId) {
+                  await ApiHelper.put('/items', { 
+                    itemId: itemId, 
+                    status: 1, 
+                    receivedDate: currentDate 
+                  })
+                }
+              }
+            }
+            
+            uni.hideLoading()
+            uni.showToast({ title: '提交成功', icon: 'success' })
+            // 刷新包裹列表
+            loadParcels(true)
           } catch (e) {
             uni.hideLoading()
             uni.showToast({ title: '提交失败', icon: 'none' })

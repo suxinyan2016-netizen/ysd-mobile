@@ -33,8 +33,8 @@ export class ApiHelper {
     // cloud-built APK should use production backend by default.
     try {
       if (typeof plus !== 'undefined') {
-        console.log('[ApiHelper] Native runtime detected, using: http://pacitem.com/api')
-        return 'http://pacitem.com/api'
+        console.log('[ApiHelper] Native runtime detected, using: https://pacitem.com/api')
+        return 'https://pacitem.com/api'
       }
     } catch (e) {}
 
