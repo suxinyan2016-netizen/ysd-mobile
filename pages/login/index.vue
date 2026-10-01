@@ -8,6 +8,18 @@
       <text class="version-text" @longpress="handleManualUpdate">Version: {{ currentVersion }}</text>
     </view>
 
+    <!-- 调试日志区域 (已隐藏，代码保留以便后续调试) -->
+    <!-- <view class="debug-log" v-if="debugLogs.length > 0">
+      <view class="log-title">调试日志</view>
+      <scroll-view class="log-content" scroll-y>
+        <text v-for="(log, index) in debugLogs" :key="index" class="log-item">{{ log }}</text>
+      </scroll-view>
+      <view class="log-actions">
+        <button class="test-btn" @click="testNetworkConnection" size="mini">测试网络</button>
+        <button class="test-btn" @click="clearLogs" size="mini">清空日志</button>
+      </view>
+    </view> -->
+
     <view class="login-form">
       <view class="form-item">
         <view class="input-wrapper">
@@ -63,7 +75,8 @@ export default {
       password: '',
       loading: false,
       showFingerprint: false,
-      currentVersion: ''
+      currentVersion: '',
+      debugLogs: []
     }
   },
 
@@ -74,6 +87,7 @@ export default {
     // 获取当前版本号
     this.currentVersion = getCurrentVersionName()
     console.log('[Login] Current version:', this.currentVersion)
+    this.addDebugLog(`当前版本: ${this.currentVersion}`)
 
     // #ifdef APP-PLUS
     console.log('[Login] Running in APP-PLUS environment')
@@ -322,15 +336,67 @@ export default {
     // 手动检查更新
     async handleManualUpdate() {
       console.log('[Login] Manual update check triggered')
+      this.addDebugLog('1. 开始手动检查更新')
       uni.showLoading({ title: '检查更新中...' })
+
+      // 添加10秒超时保护
+      const timeout = setTimeout(() => {
+        uni.hideLoading()
+        this.addDebugLog('10. 检查更新超时')
+        uni.showToast({ title: '检查更新超时', icon: 'none' })
+      }, 10000)
+
       try {
-        await checkAndHandleUpdate(false) // false = 非静默模式，会显示提示
+        this.addDebugLog('2. 调用checkAndHandleUpdate')
+        await checkAndHandleUpdate(false, (log) => this.addDebugLog(log)) // false = 非静默模式，会显示提示
+        this.addDebugLog('9. checkAndHandleUpdate返回')
+        clearTimeout(timeout)
       } catch (e) {
+        clearTimeout(timeout)
         console.error('[Login] Manual update check failed:', e)
+        this.addDebugLog(`9. 检查更新失败: ${e?.message || e}`)
         uni.showToast({ title: '检查更新失败', icon: 'none' })
       } finally {
         uni.hideLoading()
       }
+    },
+
+    // 添加调试日志
+    addDebugLog(message) {
+      const timestamp = new Date().toLocaleTimeString()
+      this.debugLogs.push(`[${timestamp}] ${message}`)
+      // 限制日志数量，最多保留50条
+      if (this.debugLogs.length > 50) {
+        this.debugLogs.shift()
+      }
+    },
+
+    // 清空日志
+    clearLogs() {
+      this.debugLogs = []
+    },
+
+    // 测试网络连接
+    testNetworkConnection() {
+      this.addDebugLog('开始测试网络连接...')
+      this.addDebugLog('使用uni.request直接测试...')
+
+      uni.request({
+        url: 'https://pacitem.com/api/app/version/check',
+        method: 'GET',
+        data: {
+          platform: 'android',
+          versionCode: 107
+        },
+        success: (res) => {
+          this.addDebugLog('网络请求成功: ' + JSON.stringify(res))
+          uni.showToast({ title: '网络正常', icon: 'success' })
+        },
+        fail: (err) => {
+          this.addDebugLog('网络请求失败: ' + JSON.stringify(err))
+          uni.showToast({ title: '网络异常', icon: 'none' })
+        }
+      })
     },
 
     // directLogin is no longer used; ApiHelper handles requests with absolute baseUrl on device.
@@ -350,6 +416,53 @@ export default {
 .title { display: block; font-size: 48rpx; font-weight: bold; color: #fff; margin-bottom: 20rpx; }
 .subtitle { display: block; font-size: 28rpx; color: rgba(255,255,255,0.8); }
 .version-text { display: block; font-size: 28rpx; color: rgba(255,255,255,0.8); margin-top: 10rpx; }
+
+.debug-log {
+  margin-bottom: 40rpx;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12rpx;
+  padding: 20rpx;
+  max-height: 400rpx;
+}
+
+.log-title {
+  font-size: 24rpx;
+  color: #fff;
+  margin-bottom: 10rpx;
+  font-weight: bold;
+}
+
+.log-content {
+  height: 300rpx;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 8rpx;
+  padding: 10rpx;
+}
+
+.log-item {
+  display: block;
+  font-size: 20rpx;
+  color: #0f0;
+  line-height: 1.5;
+  margin-bottom: 5rpx;
+  word-break: break-all;
+}
+
+.log-actions {
+  display: flex;
+  gap: 10rpx;
+  margin-top: 10rpx;
+}
+
+.test-btn {
+  flex: 1;
+  height: 50rpx;
+  line-height: 50rpx;
+  font-size: 24rpx;
+  background: rgba(255, 255, 255, 0.3);
+  border: none;
+  color: #fff;
+}
 
 .login-form {
   .form-item { margin-bottom: 40rpx; }

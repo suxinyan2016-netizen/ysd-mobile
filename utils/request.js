@@ -34,14 +34,19 @@ function getApiBase() {
 const API_BASE = getApiBase()
 
 export function request(options) {
+  console.log('[request.js] request函数调用，options:', options)
   return new Promise(async (resolve, reject) => {
-    const skipAuth = options.skipAuth === true || isInWhitelist(options.url);
+    console.log('[request.js] 开始处理请求')
+    const skipAuth = options.skipAuth === true;
+    console.log('[request.js] skipAuth:', skipAuth)
     let token = '';
     if (!skipAuth) {
+      console.log('[request.js] 需要认证，获取token')
       const tokenInfo = getTokenInfo();
       token = tokenInfo.token;
       const tokenStatus = getTokenStatus();
       if (isTokenExpired()) {
+        console.log('[request.js] Token已过期，刷新token')
         const refreshResult = await refreshAccessToken();
         if (refreshResult && refreshResult.token) {
           token = refreshResult.token;
@@ -59,10 +64,12 @@ export function request(options) {
         }
       }
     }
+    console.log('[request.js] 计算finalUrl')
     let finalUrl = options.url;
-    if (!isInWhitelist(options.url)) {
-      finalUrl = API_BASE + options.url;
-    }
+    // 始终拼接API_BASE，确保URL完整
+    finalUrl = API_BASE + options.url;
+    console.log('[request.js] 最终请求URL:', finalUrl)
+    console.log('[request.js] 准备调用uni.request')
     uni.request({
       ...options,
       url: finalUrl,
@@ -71,6 +78,7 @@ export function request(options) {
         ...(token ? { token } : {})
       },
       success: (res) => {
+        console.log('[request.js] uni.request成功返回:', res)
         if (res.statusCode === 401) {
           clearTokenInfo();
           cancelScheduledRefresh();
@@ -85,6 +93,7 @@ export function request(options) {
         }
       },
       fail: (err) => {
+        console.error('[request.js] 请求失败:', err);
         uni.showToast({ title: '网络错误', icon: 'none' });
         reject(err);
       }
@@ -102,6 +111,7 @@ export function post(url, data = {}, options = {}) {
 }
 
 export function get(url, data = {}, options = {}) {
+  console.log('[request.js] get函数调用，url:', url, 'data:', data, 'options:', options)
   return request({
     url,
     method: 'GET',
