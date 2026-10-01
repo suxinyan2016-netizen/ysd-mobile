@@ -52,6 +52,7 @@ onMounted(() => {
   // 检查应用更新
   // #ifdef APP-PLUS
   setTimeout(() => {
+    console.log('[App.vue] 准备执行版本检查')
     checkAndHandleUpdate(true)
   }, 2000)
   // #endif

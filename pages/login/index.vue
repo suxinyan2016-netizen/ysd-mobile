@@ -4,6 +4,8 @@
       <image class="logo" src="/static/logo.png" mode="aspectFit" />
       <text class="title">登录</text>
       <text class="subtitle">YSD包裹管理系统</text>
+      <!-- 版本号显示，长按可手动检查更新 -->
+      <text class="version-text" @longpress="handleManualUpdate">Version: {{ currentVersion }}</text>
     </view>
 
     <view class="login-form">
@@ -52,6 +54,7 @@
 <script>
 import { ApiHelper } from '@/utils/apiHelper.js'
 import { useUserStore } from '@/stores/user'
+import { getCurrentVersionName, checkAndHandleUpdate } from '@/utils/versionUpdate.js'
 
 export default {
   data() {
@@ -59,13 +62,18 @@ export default {
       username: '',
       password: '',
       loading: false,
-      showFingerprint: false
+      showFingerprint: false,
+      currentVersion: ''
     }
   },
 
   mounted() {
     console.log('[Login] mounted called')
     console.log('[Login] Current platform:', uni.getSystemInfoSync().platform)
+
+    // 获取当前版本号
+    this.currentVersion = getCurrentVersionName()
+    console.log('[Login] Current version:', this.currentVersion)
 
     // #ifdef APP-PLUS
     console.log('[Login] Running in APP-PLUS environment')
@@ -311,6 +319,20 @@ export default {
       }
     },
 
+    // 手动检查更新
+    async handleManualUpdate() {
+      console.log('[Login] Manual update check triggered')
+      uni.showLoading({ title: '检查更新中...' })
+      try {
+        await checkAndHandleUpdate(false) // false = 非静默模式，会显示提示
+      } catch (e) {
+        console.error('[Login] Manual update check failed:', e)
+        uni.showToast({ title: '检查更新失败', icon: 'none' })
+      } finally {
+        uni.hideLoading()
+      }
+    },
+
     // directLogin is no longer used; ApiHelper handles requests with absolute baseUrl on device.
   }
 }
@@ -327,6 +349,7 @@ export default {
 .logo { width: 160rpx; height: 160rpx; margin-bottom: 40rpx; }
 .title { display: block; font-size: 48rpx; font-weight: bold; color: #fff; margin-bottom: 20rpx; }
 .subtitle { display: block; font-size: 28rpx; color: rgba(255,255,255,0.8); }
+.version-text { display: block; font-size: 28rpx; color: rgba(255,255,255,0.8); margin-top: 10rpx; }
 
 .login-form {
   .form-item { margin-bottom: 40rpx; }

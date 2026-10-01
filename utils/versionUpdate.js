@@ -5,9 +5,12 @@ import { get } from './request.js'
  */
 function getCurrentVersion() {
   // #ifdef APP-PLUS
-  return plus.runtime.versionCode
+  const versionCode = plus.runtime.versionCode
+  console.log('[版本更新] 当前APP版本号:', versionCode)
+  return versionCode
   // #endif
   // #ifndef APP-PLUS
+  console.log('[版本更新] 非APP环境，使用默认版本号: 106')
   return 106 // 默认版本号，与manifest.json保持一致
   // #endif
 }
@@ -37,9 +40,11 @@ function checkUpdate() {
       versionCode: currentVersionCode
     }, { skipAuth: true })
       .then(res => {
-        if (res.code === 200 && res.data) {
+        console.log('版本检查接口返回:', res)
+        if ((res.code === 200 || res.code === 1) && res.data) {
           resolve(res.data)
         } else {
+          console.log('版本检查返回无更新或code不匹配:', res)
           resolve({ hasUpdate: false })
         }
       })
@@ -184,16 +189,21 @@ async function performUpdate(updateInfo) {
  * @param {Boolean} silent 是否静默检查
  */
 export async function checkAndHandleUpdate(silent = false) {
+  console.log('[版本更新] 开始检查更新，静默模式:', silent)
   try {
     const updateInfo = await checkUpdate()
+    console.log('[版本更新] 检查结果:', updateInfo)
     
     if (!updateInfo.hasUpdate) {
       if (!silent) {
-        console.log('当前已是最新版本')
+        console.log('[版本更新] 当前已是最新版本')
+      } else {
+        console.log('[版本更新] 静默检查：当前已是最新版本')
       }
       return
     }
     
+    console.log('[版本更新] 发现新版本，准备显示更新弹窗')
     const { updateType } = updateInfo
     
     // 强制更新或建议更新
@@ -201,10 +211,12 @@ export async function checkAndHandleUpdate(silent = false) {
       updateInfo,
       () => {
         // 用户确认更新
+        console.log('[版本更新] 用户确认更新')
         performUpdate(updateInfo)
       },
       () => {
         // 用户取消更新
+        console.log('[版本更新] 用户取消更新')
         if (updateType === 'force') {
           // 强制更新不允许取消，重新显示弹窗
           setTimeout(() => {
@@ -216,7 +228,7 @@ export async function checkAndHandleUpdate(silent = false) {
       }
     )
   } catch (error) {
-    console.error('检查更新异常:', error)
+    console.error('[版本更新] 检查更新异常:', error)
   }
 }
 

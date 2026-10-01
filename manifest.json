@@ -2,8 +2,8 @@
     "name" : "ysd-parcel-mobile",
     "appid" : "__UNI__14BB440",
     "description" : "",
-    "versionName" : "1.0.6",
-    "versionCode" : "106",
+    "versionName" : "1.0.7",
+    "versionCode" : 107,
     "transformPx" : false,
     /* 5+App特有相关 */
     "app-plus" : {
@@ -43,8 +43,7 @@
                     "<uses-permission android:name=\"android.permission.FLASHLIGHT\"/>",
                     "<uses-feature android:name=\"android.hardware.camera\"/>",
                     "<uses-permission android:name=\"android.permission.WRITE_SETTINGS\"/>",
-                    "<uses-permission android:name=\"android.permission.USE_FINGERPRINT\"/>",
-                    "<uses-permission android:name=\"android.permission.REQUEST_INSTALL_PACKAGES\"/>"
+                    "<uses-permission android:name=\"android.permission.USE_FINGERPRINT\"/>"
                 ]
             },
             /* ios打包配置 */
