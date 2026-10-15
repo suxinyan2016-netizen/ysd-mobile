@@ -475,6 +475,9 @@ function openMore(){
   showMore.value = true
   if (!dictOptions.value.length) loadDicts()
   if (!userList.value.length) loadUsers()
+  // 同步主搜索框的值到筛选抽屉，实现复合查询
+  filter_itemNo.value = itemNo.value || ''
+  filter_sellerPart.value = sellerPart.value || ''
 }
 function closeMore(){ showMore.value = false }
 function resetMore(){

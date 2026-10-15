@@ -1356,10 +1356,15 @@ async function saveParcel() {
 // 提交
 async function handleSubmit() {
   try {
-    await uni.showModal({
+    const modalRes = await uni.showModal({
       title: '确认',
       content: '确定要提交验收吗？这将标记包裹为已收货。'
     })
+
+    // 用户点击取消，直接返回
+    if (!modalRes.confirm) {
+      return
+    }
 
     uni.showLoading({ title: '提交中...' })
 
@@ -1390,14 +1395,12 @@ async function handleSubmit() {
     }, 1500)
   } catch (error) {
     uni.hideLoading()
-    if (error !== 'cancel') {
-      console.error('提交失败:', error)
-      uni.showToast({
-        title: '提交失败: ' + (error.message || '未知错误'),
-        icon: 'none',
-        duration: 2000
-      })
-    }
+    console.error('提交失败:', error)
+    uni.showToast({
+      title: '提交失败: ' + (error.message || '未知错误'),
+      icon: 'none',
+      duration: 2000
+    })
   }
 }
 
