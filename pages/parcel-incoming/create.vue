@@ -47,7 +47,7 @@
         <!-- 库位 row -->
         <view class="info-row">
           <text class="label">库位:</text>
-          <input class="form-input slot-input" v-model="parcel.slot" placeholder="请输入库位" />
+          <view class="form-input picker-display editable" @click="openModal('slot', slotOptions.map(s=>s.slot), '选择库位')">{{ selectedSlotName }}</view>
         </view>
       </view>
 
@@ -127,6 +127,8 @@ const receiverImages = ref([])
 const packingListImages = ref([])
 const isSaving = ref(false)
 const savedOnce = ref(false)
+const slotOptions = ref([])
+const slotIndex = ref(0)
 
 // 货主/收货方相关
 const owners = ref([])
@@ -138,6 +140,12 @@ const packageStatusIndex = ref(0)
 const packageStatusValues = [0,1,2,9]
 const packageStatusNames = ['计划中','在途','入库','异常']
 const currentUserName = computed(() => userStore.userInfo?.name || userStore.userInfo?.username || '')
+const selectedSlotName = computed(() => {
+  if (!slotOptions.value || !slotOptions.value.length) return ''
+  const idx = slotIndex.value || 0
+  const s = slotOptions.value[idx]
+  return s ? s.slot : ''
+})
 
 function onOwnerChange(e) {
   ownerIndex.value = Number(e.detail.value)
@@ -164,6 +172,10 @@ function selectModal(idx) {
   } else if (modalField.value === 'packageStatus') {
     packageStatusIndex.value = idx
     packageStatus.value = packageStatusValues[idx]
+  } else if (modalField.value === 'slot') {
+    slotIndex.value = idx
+    const sel = slotOptions.value[idx]
+    parcel.value.slot = sel ? sel.slot : ''
   }
   showModal.value = false
 }
@@ -187,6 +199,22 @@ async function loadOwners() {
     }
   } catch (err) {
     console.warn('loadOwners failed', err)
+  }
+}
+
+async function loadSlots() {
+  try {
+    const res = await ApiHelper.get('/slots')
+    if (res && res.code === 1 && Array.isArray(res.data)) {
+      slotOptions.value = res.data
+      // if parcel.slot is already set, find and set slotIndex
+      if (parcel.value.slot) {
+        const idx = slotOptions.value.findIndex(s => s.slot === parcel.value.slot)
+        if (idx >= 0) slotIndex.value = idx
+      }
+    }
+  } catch (err) {
+    console.warn('loadSlots failed', err)
   }
 }
 
@@ -481,6 +509,7 @@ onLoad(() => {
   if (!userStore.userInfo?.id) userStore.checkLoginStatus()
   // load owners and ensure radio default selection after component load
   loadOwners()
+  loadSlots()
   nextTick(() => {
     packageType.value = '2'
   })

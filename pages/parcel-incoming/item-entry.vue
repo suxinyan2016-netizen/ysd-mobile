@@ -70,7 +70,7 @@
         <!-- 新增行: 库位 -->
         <view class="info-row">
           <text class="label">库位 (Slot):</text>
-          <input class="form-input" v-model="item.slot" placeholder="请输入库位" />
+          <view class="form-input picker-display editable" @click="openModal('slot', slotOptions.map(s=>s.slot), '选择库位')">{{ selectedSlotName }}</view>
         </view>
       </view>
 
@@ -152,6 +152,8 @@ const item = ref({ itemNo: '', sellerPart: '', tempKey: '', receiveParcelId: par
 const itemImages = ref([])
 const isSaving = ref(false)
 const dictOptions = ref([])
+const slotOptions = ref([])
+const slotIndex = ref(0)
 
 const canAddMore = computed(() => itemImages.value.length < 6)
 const dictIndex = ref(0)
@@ -160,6 +162,12 @@ const selectedDictName = computed(() => {
   const idx = dictIndex.value || 0
   const d = dictOptions.value[idx]
   return d ? d.dictName : ''
+})
+const selectedSlotName = computed(() => {
+  if (!slotOptions.value || !slotOptions.value.length) return ''
+  const idx = slotIndex.value || 0
+  const s = slotOptions.value[idx]
+  return s ? s.slot : ''
 })
 
 function onDictChange(e) {
@@ -191,6 +199,10 @@ function selectModal(idx) {
     item.value.dictId = sel ? sel.dictId : null
   } else if (modalField.value === 'sku') {
     applySku(skuCandidates.value[idx])
+  } else if (modalField.value === 'slot') {
+    slotIndex.value = idx
+    const sel = slotOptions.value[idx]
+    item.value.slot = sel ? sel.slot : ''
   }
   showModal.value = false
 }
@@ -260,6 +272,22 @@ async function loadDicts() {
     }
   } catch (err) {
     console.warn('loadDicts failed', err)
+  }
+}
+
+async function loadSlots() {
+  try {
+    const res = await ApiHelper.get('/slots')
+    if (res && res.code === 1 && Array.isArray(res.data)) {
+      slotOptions.value = res.data
+      // if item.slot is already set, find and set slotIndex
+      if (item.value.slot) {
+        const idx = slotOptions.value.findIndex(s => s.slot === item.value.slot)
+        if (idx >= 0) slotIndex.value = idx
+      }
+    }
+  } catch (err) {
+    console.warn('loadSlots failed', err)
   }
 }
 
@@ -522,6 +550,7 @@ async function handleSubmit() {
 
 onMounted(() => {
   loadDicts()
+  loadSlots()
   // In some native runtimes the route/options may not be available at module-eval time.
   // Re-check current page options and populate reactive refs so template shows packageNo.
   try {

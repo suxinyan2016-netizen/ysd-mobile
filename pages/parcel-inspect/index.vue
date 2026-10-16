@@ -25,7 +25,7 @@
         </view>
         <view class="info-row">
           <text class="label">库位 (Slot):</text>
-          <input class="form-input" v-model="parcel.slot" placeholder="请输入库位" />
+          <view class="form-input picker-display editable" @click="openModal('parcelSlot', slotOptions.map(s=>s.slot), '选择库位')">{{ selectedParcelSlotName }}</view>
         </view>
       </view>
       
@@ -164,12 +164,7 @@
         </view>
         <view class="info-row">
           <text class="label">库位 (Slot):</text>
-          <input
-            class="form-input"
-            type="text"
-            v-model="itemForm.slot"
-            placeholder="请输入库位"
-          />
+          <view class="form-input picker-display editable" @click="openModal('itemSlot', slotOptions.map(s=>s.slot), '选择库位')">{{ selectedItemSlotName }}</view>
         </view>
       </view>
       
@@ -226,11 +221,14 @@
       <text class="empty-text">暂无商品需要验收</text>
     </view>
 
-    
+    <!-- reusable modal component -->
+    <ModalPicker v-if="showModal" :show="showModal" :title="modalTitle" :list="modalList" @select="selectModal" @close="closeModal" />
+
   </view>
 </template>
 
 <script setup>
+import ModalPicker from '@/components/ModalPicker.vue'
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { ApiHelper } from '@/utils/apiHelper'
@@ -294,8 +292,25 @@ const selectedCategoryIndex = ref(-1)
 // 默认使用的字典 group 名；后端实际是页面上显示的 Label（例如 'Category'）
 const CATEGORY_GROUP = 'Category'
 
+// slot options
+const slotOptions = ref([])
+const parcelSlotIndex = ref(0)
+const itemSlotIndex = ref(0)
+
 // picker 需要 string 数组作为 range，维护一个 names 数组以供展示
 const categoryNames = computed(() => categories.value.map(d => d.dictName || ''))
+const selectedParcelSlotName = computed(() => {
+  if (!slotOptions.value || !slotOptions.value.length) return ''
+  const idx = parcelSlotIndex.value || 0
+  const s = slotOptions.value[idx]
+  return s ? s.slot : ''
+})
+const selectedItemSlotName = computed(() => {
+  if (!slotOptions.value || !slotOptions.value.length) return ''
+  const idx = itemSlotIndex.value || 0
+  const s = slotOptions.value[idx]
+  return s ? s.slot : ''
+})
 
 // 当前商品表单数据
 const itemForm = ref({
@@ -380,6 +395,55 @@ function onCategoryChange(e) {
   }
 }
 
+// modal picker state
+const showModal = ref(false)
+const modalList = ref([])
+const modalTitle = ref('')
+const modalField = ref('')
+
+function openModal(field, list, title) {
+  modalField.value = field
+  modalList.value = Array.isArray(list) ? list : []
+  modalTitle.value = title || ''
+  showModal.value = true
+}
+
+function closeModal() { showModal.value = false }
+
+function selectModal(idx) {
+  if (modalField.value === 'parcelSlot') {
+    parcelSlotIndex.value = idx
+    const sel = slotOptions.value[idx]
+    parcel.value.slot = sel ? sel.slot : ''
+  } else if (modalField.value === 'itemSlot') {
+    itemSlotIndex.value = idx
+    const sel = slotOptions.value[idx]
+    itemForm.value.slot = sel ? sel.slot : ''
+  }
+  showModal.value = false
+}
+
+async function loadSlots() {
+  try {
+    const res = await ApiHelper.get('/slots')
+    if (res && res.code === 1 && Array.isArray(res.data)) {
+      slotOptions.value = res.data
+      // if parcel.slot is already set, find and set parcelSlotIndex
+      if (parcel.value.slot) {
+        const idx = slotOptions.value.findIndex(s => s.slot === parcel.value.slot)
+        if (idx >= 0) parcelSlotIndex.value = idx
+      }
+      // if itemForm.slot is already set, find and set itemSlotIndex
+      if (itemForm.value.slot) {
+        const idx = slotOptions.value.findIndex(s => s.slot === itemForm.value.slot)
+        if (idx >= 0) itemSlotIndex.value = idx
+      }
+    }
+  } catch (err) {
+    console.warn('loadSlots failed', err)
+  }
+}
+
 // 计算属性
 const itemCount = computed(() => {
   const items = parcel.value.items || parcel.value.itemList || []
@@ -417,6 +481,8 @@ onLoad((options) => {
   }
   // 打印 ApiHelper 调试信息（基于运行环境帮助排查 APK/模拟器网络问题）
   try { ApiHelper.debugInfo() } catch (e) { console.warn('ApiHelper.debugInfo 调用失败', e) }
+  // load slots
+  loadSlots()
 
   // 支持接收图片数据
   if (options.receiverImages) {
