@@ -90,6 +90,20 @@ export default {
     this.addDebugLog(`当前版本: ${this.currentVersion}`)
 
     // #ifdef APP-PLUS
+    // 从manifest.json读取真实版本号，避免plus.runtime.version缓存问题
+    plus.runtime.getProperty(plus.runtime.appid, (widgetInfo) => {
+      if (widgetInfo && widgetInfo.version && widgetInfo.version.name) {
+        console.log('[Login] Manifest version:', widgetInfo.version.name)
+        this.addDebugLog(`Manifest版本: ${widgetInfo.version.name}`)
+        if (widgetInfo.version.name !== this.currentVersion) {
+          console.log('[Login] 版本号不一致，更新显示')
+          this.currentVersion = widgetInfo.version.name
+        }
+      }
+    })
+    // #endif
+
+    // #ifdef APP-PLUS
     console.log('[Login] Running in APP-PLUS environment')
     console.log('[Login] plus object available:', typeof plus !== 'undefined')
     if (typeof plus !== 'undefined') {

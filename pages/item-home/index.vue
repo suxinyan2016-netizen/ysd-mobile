@@ -65,6 +65,17 @@
             <text class="pcard-desc">待维修商品列表</text>
           </view>
         </view>
+        <view class="primary-row">
+          <view class="primary-card" hover-class="card-active" @click="openStocktake">
+            <view class="pcard-header">
+              <view class="pcard-icon" style="background:linear-gradient(135deg,#9254de,#722ed1);">
+                <text class="pcard-icon-text">盘</text>
+              </view>
+              <text class="pcard-label">盘点</text>
+            </view>
+            <text class="pcard-desc">盘点任务列表</text>
+          </view>
+        </view>
       </view>
     </view>
   </view>
@@ -128,6 +139,14 @@ function openRepair(){
   }catch(e){
     console.warn('navigateTo failed, retrying without leading slash', e)
     try{ uni.navigateTo({ url: `pages/item-service/index?keeperId=${encodeURIComponent(userStore.userInfo?.id||'')}&needRepair=1&isRepaired=0` }) }catch(err){ console.error('navigation failed', err); uni.showToast({ title: '无法打开维修列表', icon:'none' }) }
+  }
+}
+function openStocktake(){
+  try{
+    uni.navigateTo({ url: '/pages/stocktake-list/index' })
+  }catch(e){
+    console.warn('navigateTo failed, retrying without leading slash', e)
+    try{ uni.navigateTo({ url: 'pages/stocktake-list/index' }) }catch(err){ console.error('navigation failed', err); uni.showToast({ title: '无法打开盘点列表', icon:'none' }) }
   }
 }
 </script>

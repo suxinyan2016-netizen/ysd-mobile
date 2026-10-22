@@ -186,6 +186,21 @@
         "navigationStyle": "custom",
         "enablePullDownRefresh": true
       }
+    },
+    {
+      "path": "pages/stocktake-list/index",
+      "style": {
+        "navigationBarTitleText": "盘点列表",
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": true
+      }
+    },
+    {
+      "path": "pages/stocktake-entry/index",
+      "style": {
+        "navigationBarTitleText": "盘点录入",
+        "navigationStyle": "custom"
+      }
     }
   ],
   "globalStyle": {
