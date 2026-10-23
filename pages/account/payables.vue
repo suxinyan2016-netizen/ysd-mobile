@@ -46,6 +46,24 @@
         </view>
       </view>
 
+      <!-- Service fee groups (应付其它服务费) -->
+      <view class="card" v-if="serviceFeeGroups.length">
+        <view class="card-header">应付其它服务费</view>
+        <view class="card-body">
+          <view class="table-row header">
+            <text class="col">收款人</text>
+            <text class="col right">总额</text>
+          </view>
+          <view class="table-row" v-for="g in serviceFeeGroups" :key="g.sellerId">
+            <text class="col">{{ g.payto || '未知' }}</text>
+            <view class="col right">
+              <text class="amount">{{ fmt(g.total) }}</text>
+              <button class="link" @click="openServiceFeeDetails(g)">明细</button>
+            </view>
+          </view>
+        </view>
+      </view>
+
       <view class="summary-row" style="margin-top:12rpx">
         <view class="col"></view>
         <view class="col right"><text class="summary-total">合计: {{ fmt(pageTotal) }}</text></view>
@@ -70,7 +88,7 @@
             <text class="col total">总费用</text>
           </view>
           <view class="table-row" v-for="row in dialogItems" :key="row.itemId || row.id">
-            <view class="col sel"><checkbox :value="row.itemId || row.id" :checked="selectedItemIds.includes(row.itemId||row.id)" @change="toggleItemSelection(row)" /></view>
+            <view class="col sel" @click="toggleItemSelection(row)"><checkbox :value="row.itemId || row.id" :checked="selectedItemIds.includes(row.itemId||row.id)" disabled /></view>
             <text class="col name">{{ row.sellerpart || '' }}</text>
             <text class="col total">{{ fmt(row.subtotalfee || row.total || 0) }}</text>
           </view>
@@ -100,7 +118,7 @@
             <text class="col total">费用</text>
           </view>
           <view class="table-row" v-for="row in dialogParcels" :key="row.parcelId || row.packageno || row.id">
-            <view class="col sel"><checkbox :value="row.parcelId || row.id || row.packageno" :checked="selectedParcelIds.includes(row.parcelId||row.id||row.packageno)" @change="toggleParcelSelection(row)" /></view>
+            <view class="col sel" @click="toggleParcelSelection(row)"><checkbox :value="row.parcelId || row.id || row.packageno" :checked="selectedParcelIds.includes(row.parcelId||row.id||row.packageno)" disabled /></view>
             <text class="col name">{{ row.packageno || '' }}</text>
             <text class="col total">{{ fmt(row.fee || 0) }}</text>
           </view>
@@ -108,6 +126,38 @@
         <view class="drawer-footer">
           <text>合计: {{ fmt(parcelDialogTotal) }}</text>
           <button class="btn primary" @click="settleSelectedParcels">结算</button>
+        </view>
+      </view>
+    </view>
+
+    <!-- Service fee details drawer -->
+    <view v-if="showServiceFeeDialog" class="drawer-overlay" @click.self="showServiceFeeDialog=false">
+      <view class="drawer">
+        <view class="drawer-header">
+          <text class="drawer-title">{{ serviceFeeDialogTitle }}</text>
+          <view class="drawer-actions">
+            <view class="close" @click="showServiceFeeDialog=false">
+              <text class="close-x">✕</text>
+            </view>
+          </view>
+        </view>
+        <view class="drawer-content">
+          <view class="table-row header">
+            <text class="col sel">选</text>
+            <text class="col name">日期</text>
+            <text class="col name">名称</text>
+            <text class="col total">费用</text>
+          </view>
+          <view class="table-row" v-for="row in dialogServiceFees" :key="row.id">
+            <view class="col sel" @click="toggleServiceFeeSelection(row)"><checkbox :value="row.id" :checked="selectedServiceFeeIds.includes(row.id)" disabled /></view>
+            <text class="col name">{{ row.serviceDate || '' }}</text>
+            <text class="col name">{{ row.serviceName || '' }}</text>
+            <text class="col total">{{ fmt(row.serviceFee || 0) }}</text>
+          </view>
+        </view>
+        <view class="drawer-footer">
+          <text>合计: {{ fmt(serviceFeeDialogTotal) }}</text>
+          <button class="btn primary" @click="settleSelectedServiceFees">结算</button>
         </view>
       </view>
     </view>
@@ -122,10 +172,11 @@ import { smartBack } from '@/utils/navigation'
 
 const itemGroups = ref([])
 const parcelGroups = ref([])
+const serviceFeeGroups = ref([])
 
 const pageTotal = computed(() => {
   const sum = (groups) => (groups || []).reduce((s, g) => s + Number(g.total || 0), 0)
-  return sum(itemGroups.value) + sum(parcelGroups.value)
+  return sum(itemGroups.value) + sum(parcelGroups.value) + sum(serviceFeeGroups.value)
 })
 
 const showItemDialog = ref(false)
@@ -142,12 +193,28 @@ const selectedParcelIds = ref([])
 const currentItemGroup = ref(null)
 const currentParcelGroup = ref(null)
 
+const showServiceFeeDialog = ref(false)
+const dialogServiceFees = ref([])
+const serviceFeeDialogTitle = ref('')
+const serviceFeeDialogTotal = ref(0)
+const selectedServiceFeeIds = ref([])
+const currentServiceFeeGroup = ref(null)
+const users = ref([])
+
 function fmt(v){ if (v == null || v === '') return '0.00'; const n = Number(v); if (Number.isNaN(n)) return '0.00'; return n.toFixed(2) }
 
 async function load(){
   const user = getTokenInfo().loginUser || JSON.parse(uni.getStorageSync('loginUser') || '{}') || {}
   const uid = user.userId ?? user.id ?? user.userid
   if (!uid) return
+
+  // Load users for name lookup
+  try {
+    const res = await ApiHelper.get('/users/all')
+    if (res && res.code === 1) users.value = res.data || []
+    else if (Array.isArray(res)) users.value = res
+    users.value = (users.value || []).filter(u => ((u.userId || u.id) !== 1))
+  } catch (e) { users.value = [] }
 
   // load item fees grouped by payto
   try{
@@ -178,6 +245,21 @@ async function load(){
     })
     parcelGroups.value = Array.from(map.values())
   }catch(e){ parcelGroups.value = [] }
+
+  // service fees where current user is buyer (payable)
+  try{
+    const res = await ApiHelper.get(`/service-fees?buyerId=${uid}&isPaid=0`)
+    const rows = (res && res.data) ? (Array.isArray(res.data) ? res.data : (res.data.rows || [])) : (Array.isArray(res) ? res : [])
+    const map = new Map()
+    rows.forEach(r => {
+      const key = r.sellerId || 0
+      const name = getUserName(key)
+      const fee = Number(r.serviceFee || 0)
+      if (!map.has(key)) map.set(key, { sellerId: key, payto: name, total: 0 })
+      map.get(key).total += fee
+    })
+    serviceFeeGroups.value = Array.from(map.values())
+  }catch(e){ serviceFeeGroups.value = [] }
 }
 
 async function openItemDetails(group){
@@ -228,34 +310,69 @@ function toggleParcelSelection(row){
   else selectedParcelIds.value.splice(idx,1)
 }
 
+function toggleServiceFeeSelection(row){
+  const id = row.id
+  const idx = selectedServiceFeeIds.value.indexOf(id)
+  if (idx === -1) selectedServiceFeeIds.value.push(id)
+  else selectedServiceFeeIds.value.splice(idx,1)
+}
+
 async function settleSelectedItems(){
   const ids = selectedItemIds.value.slice()
   if (!ids.length){ uni.showToast({ title:'请选择要结算的商品', icon:'none' }); return }
-  uni.showModal({ title:'确认', content:'确定结算选中的商品吗？', success: async (res) => {
-    if (res.confirm){
-      try{
-        await ApiHelper.post('/fees/settleItems', { ids })
-        uni.showToast({ title:'结算成功', icon:'success' })
-        if (currentItemGroup.value) await openItemDetails(currentItemGroup.value)
-        await load()
-      }catch(e){ uni.showToast({ title:'结算失败', icon:'none' }) }
-    }
-  }})
+  try{
+    await ApiHelper.post('/fees/settleItems', { ids })
+    uni.showToast({ title:'结算成功', icon:'success' })
+    if (currentItemGroup.value) await openItemDetails(currentItemGroup.value)
+    await load()
+  }catch(e){ uni.showToast({ title:'结算失败', icon:'none' }) }
 }
 
 async function settleSelectedParcels(){
   const ids = selectedParcelIds.value.slice()
   if (!ids.length){ uni.showToast({ title:'请选择要结算的包裹', icon:'none' }); return }
-  uni.showModal({ title:'确认', content:'确定结算选中的包裹吗？', success: async (res) => {
-    if (res.confirm){
-      try{
-        await ApiHelper.post('/fees/settleParcels', { ids })
-        uni.showToast({ title:'结算成功', icon:'success' })
-        if (currentParcelGroup.value) await openParcelDetails(currentParcelGroup.value)
-        await load()
-      }catch(e){ uni.showToast({ title:'结算失败', icon:'none' }) }
-    }
-  }})
+  try{
+    await ApiHelper.post('/fees/settleParcels', { ids })
+    uni.showToast({ title:'结算成功', icon:'success' })
+    if (currentParcelGroup.value) await openParcelDetails(currentParcelGroup.value)
+    await load()
+  }catch(e){ uni.showToast({ title:'结算失败', icon:'none' }) }
+}
+
+function getUserName(userId) {
+  const u = (users.value || []).find(user => (user.userId || user.id) === userId)
+  return u ? (u.name || u.username || String(userId)) : String(userId)
+}
+
+async function openServiceFeeDetails(group){
+  const user = getTokenInfo().loginUser || JSON.parse(uni.getStorageSync('loginUser') || '{}') || {}
+  const uid = user.userId ?? user.id ?? user.userid
+  if (!uid) return
+  const sellerId = group.sellerId
+  try{
+    const res = await ApiHelper.get(`/service-fees?buyerId=${uid}&sellerId=${sellerId}&isPaid=0`)
+    const rows = (res && res.data) ? (Array.isArray(res.data) ? res.data : (res.data.rows || [])) : (Array.isArray(res) ? res : [])
+    dialogServiceFees.value = rows
+    selectedServiceFeeIds.value = []
+    currentServiceFeeGroup.value = group
+    serviceFeeDialogTotal.value = rows.reduce((s,r)=>s+Number(r.serviceFee||0),0)
+    serviceFeeDialogTitle.value = `${group.payto} - 应付其它服务费明细`
+    showServiceFeeDialog.value = true
+  }catch(e){ uni.showToast({ title:'无法加载服务费明细', icon:'none' }) }
+}
+
+async function settleSelectedServiceFees(){
+  const ids = selectedServiceFeeIds.value.slice()
+  if (!ids.length){ uni.showToast({ title:'请选择要结算的服务费', icon:'none' }); return }
+  try{
+    const date = new Date().toISOString()
+    await Promise.all(ids.map(id => 
+      ApiHelper.put(`/service-fees/${id}`, { isPaid: 1, paymentDate: date })
+    ))
+    uni.showToast({ title:'结算成功', icon:'success' })
+    if (currentServiceFeeGroup.value) await openServiceFeeDetails(currentServiceFeeGroup.value)
+    await load()
+  }catch(e){ uni.showToast({ title:'结算失败', icon:'none' }) }
 }
 
 onMounted(load)
@@ -288,7 +405,7 @@ onMounted(load)
 .amount{ color:#333; font-weight:600 }
 
 /* drawer styles copied from components/ItemQuery.vue for consistent global drawer */
-.drawer-overlay{ position:fixed; left:0; right:0; top:0; bottom:0; background:rgba(0,0,0,0.35); display:flex; align-items:flex-end; justify-content:center; z-index:2000 }
+.drawer-overlay{ position:fixed; left:0; right:0; top:0; bottom:0; background:rgba(0,0,0,0.35); display:flex; align-items:flex-end; justify-content:center; z-index:1000 }
 .drawer{ width:100%; background:#fff; border-top-left-radius:16rpx; border-top-right-radius:16rpx; padding:20rpx }
 .drawer-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12rpx }
 .drawer-title{ font-size:28rpx; font-weight:600 }

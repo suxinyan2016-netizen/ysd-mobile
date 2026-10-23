@@ -46,6 +46,24 @@
         </view>
       </view>
 
+      <!-- Service fee groups (应收其它服务费) -->
+      <view class="card" v-if="serviceFeeGroups.length">
+        <view class="card-header">应收其它服务费</view>
+        <view class="card-body">
+          <view class="table-row header">
+            <text class="col">付款人</text>
+            <text class="col right">总额</text>
+          </view>
+          <view class="table-row" v-for="g in serviceFeeGroups" :key="g.buyerId">
+            <text class="col">{{ g.paidby || '未知' }}</text>
+            <view class="col right">
+              <text class="amount">{{ fmt(g.total) }}</text>
+              <button class="link" @click="openServiceFeeDetails(g)">明细</button>
+            </view>
+          </view>
+        </view>
+      </view>
+
       <view class="summary-row" style="margin-top:12rpx">
         <view class="col"></view>
         <view class="col right"><text class="summary-total">合计: {{ fmt(pageTotal) }}</text></view>
@@ -108,6 +126,35 @@
         </view>
       </view>
     </view>
+
+    <!-- Service fee details drawer -->
+    <view v-if="showServiceFeeDialog" class="drawer-overlay" @click.self="showServiceFeeDialog=false">
+      <view class="drawer">
+        <view class="drawer-header">
+          <text class="drawer-title">{{ serviceFeeDialogTitle }}</text>
+          <view class="drawer-actions">
+            <view class="close" @click="showServiceFeeDialog=false">
+              <text class="close-x">✕</text>
+            </view>
+          </view>
+        </view>
+        <view class="drawer-content">
+          <view class="table-row header">
+            <text class="col name">日期</text>
+            <text class="col name">名称</text>
+            <text class="col total">费用</text>
+          </view>
+          <view class="table-row" v-for="row in dialogServiceFees" :key="row.id">
+            <text class="col name">{{ row.serviceDate || '' }}</text>
+            <text class="col name">{{ row.serviceName || '' }}</text>
+            <text class="col total">{{ fmt(row.serviceFee || 0) }}</text>
+          </view>
+        </view>
+        <view class="drawer-footer">
+          <text>合计: {{ fmt(serviceFeeDialogTotal) }}</text>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -119,10 +166,11 @@ import { smartBack } from '@/utils/navigation'
 
 const itemGroups = ref([])
 const parcelGroups = ref([])
+const serviceFeeGroups = ref([])
 
 const pageTotal = computed(() => {
   const sum = (groups) => (groups || []).reduce((s, g) => s + Number(g.total || 0), 0)
-  return sum(itemGroups.value) + sum(parcelGroups.value)
+  return sum(itemGroups.value) + sum(parcelGroups.value) + sum(serviceFeeGroups.value)
 })
 
 const showItemDialog = ref(false)
@@ -143,12 +191,26 @@ const dialogParcels = ref([])
 const parcelDialogTitle = ref('')
 const parcelDialogTotal = ref(0)
 
+const showServiceFeeDialog = ref(false)
+const dialogServiceFees = ref([])
+const serviceFeeDialogTitle = ref('')
+const serviceFeeDialogTotal = ref(0)
+const users = ref([])
+
 function fmt(v) { if (v == null || v === '') return '0.00'; const n = Number(v); if (Number.isNaN(n)) return '0.00'; return n.toFixed(2) }
 
 async function load() {
   const user = getTokenInfo().loginUser || JSON.parse(uni.getStorageSync('loginUser') || '{}') || {}
   const uid = user.userId ?? user.id ?? user.userid
   if (!uid) return
+
+  // Load users for name lookup
+  try {
+    const res = await ApiHelper.get('/users/all')
+    if (res && res.code === 1) users.value = res.data || []
+    else if (Array.isArray(res)) users.value = res
+    users.value = (users.value || []).filter(u => ((u.userId || u.id) !== 1))
+  } catch (e) { users.value = [] }
 
   // item fees where current user is payto (receivable)
   try {
@@ -179,6 +241,21 @@ async function load() {
     })
     parcelGroups.value = Array.from(map.values())
   } catch (e) { parcelGroups.value = [] }
+
+  // service fees where current user is seller (receivable)
+  try {
+    const res = await ApiHelper.get(`/service-fees?sellerId=${uid}&isPaid=0`)
+    const rows = (res && res.data) ? (Array.isArray(res.data) ? res.data : (res.data.rows || [])) : (Array.isArray(res) ? res : [])
+    const map = new Map()
+    rows.forEach(r => {
+      const key = r.buyerId || 0
+      const name = getUserName(key)
+      const fee = Number(r.serviceFee || 0)
+      if (!map.has(key)) map.set(key, { buyerId: key, paidby: name, total: 0 })
+      map.get(key).total += fee
+    })
+    serviceFeeGroups.value = Array.from(map.values())
+  } catch (e) { serviceFeeGroups.value = [] }
 }
 
 async function openItemDetails(group) {
@@ -210,6 +287,26 @@ async function openParcelDetails(group) {
     parcelDialogTitle.value = `${group.paidby || ''}（付款方）`
     showParcelDialog.value = true
   } catch (e) { uni.showToast({ title: '无法加载运费明细', icon: 'none' }) }
+}
+
+function getUserName(userId) {
+  const u = (users.value || []).find(user => (user.userId || user.id) === userId)
+  return u ? (u.name || u.username || String(userId)) : String(userId)
+}
+
+async function openServiceFeeDetails(group) {
+  const user = getTokenInfo().loginUser || JSON.parse(uni.getStorageSync('loginUser') || '{}') || {}
+  const uid = user.userId ?? user.id ?? user.userid
+  if (!uid) return
+  const buyerId = group.buyerId
+  try {
+    const res = await ApiHelper.get(`/service-fees?buyerId=${buyerId}&sellerId=${uid}&isPaid=0`)
+    const rows = (res && res.data) ? (Array.isArray(res.data) ? res.data : (res.data.rows || [])) : (Array.isArray(res) ? res : [])
+    dialogServiceFees.value = rows
+    serviceFeeDialogTotal.value = rows.reduce((s, r) => s + Number(r.serviceFee || 0), 0)
+    serviceFeeDialogTitle.value = `${group.paidby} - 应收其它服务费明细`
+    showServiceFeeDialog.value = true
+  } catch (e) { uni.showToast({ title: '无法加载服务费明细', icon: 'none' }) }
 }
 
 onMounted(() => load())

@@ -26,7 +26,7 @@
         <view v-for="row in rows" :key="row._key" class="row-card">
           <view class="row-top">
             <text class="top-date">{{ row.paymentdate || row.paymentDate || '' }}</text>
-            <text class="top-type">{{ row.statementtype === 'P' ? '包裹' : '商品' }}</text>
+            <text class="top-type">{{ row.statementtype === 'P' ? '包裹' : row.statementtype === 'S' ? '其它服务' : '商品' }}</text>
             <text class="top-amount">$ {{ fmt(row.Amount || row.amount || row.total || 0) }}</text>
           </view>
           <view class="row-bottom">
