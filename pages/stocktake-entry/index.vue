@@ -19,6 +19,8 @@
         <view class="info-row">
           <text class="label">盘点日期:</text>
           <text class="value">{{ formatDate(stocktakeInfo.stocktakeTime) }}</text>
+          <text class="total-label">实盘总计:</text>
+          <text class="total-value">{{ totalQty }}</text>
         </view>
       </view>
 
@@ -62,7 +64,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { ApiHelper } from '@/utils/apiHelper'
 import { smartBack } from '@/utils/navigation'
@@ -71,6 +73,13 @@ const stocktakeId = ref(null)
 const stocktakeInfo = ref({})
 const results = ref([])
 const isSaving = ref(false)
+
+const totalQty = computed(() => {
+  return results.value.reduce((sum, item) => {
+    const qty = Number(item.qty) || 0
+    return sum + qty
+  }, 0)
+})
 
 function getQueryParam(name){ try{ if (typeof getCurrentPages === 'function'){ const rp = getCurrentPages()[getCurrentPages().length-1]; const search = rp && rp.options ? rp.options : (rp && rp.$route && rp.$route.query ? rp.$route.query : {}); if (search && search[name]) return search[name] } if (typeof window !== 'undefined' && window.location) { const sp = new URLSearchParams(window.location.search); return sp.get(name) } }catch(e){} return null }
 
@@ -195,9 +204,11 @@ onMounted(() => {
 .info-row:last-child { padding-bottom:0 }
 .label { width:160rpx; color:#666; margin-right:12rpx; text-align:left; font-size:22rpx }
 .value { flex:1; color:#333; font-size:24rpx }
+.total-label { color:#666; font-size:22rpx; margin-left:20rpx }
+.total-value { color:#36b37e; font-size:32rpx; font-weight:700 }
 .section { background:#fff; border-radius:16rpx; padding:30rpx; margin-bottom:20rpx }
 .add-row { display:flex; justify-content:center; padding-top:20rpx }
-.add-btn { background:#9254de; color:#fff; border:none; padding:0 80rpx; height:60rpx; line-height:60rpx; border-radius:8rpx; font-size:26rpx }
+.add-btn { background:#36b37e; color:#fff; border:none; padding:0 80rpx; height:60rpx; line-height:60rpx; border-radius:8rpx; font-size:26rpx }
 .result-list { display:flex; flex-direction:column; gap:16rpx }
 .result-item { background:#f7f9ff; border-radius:12rpx; padding:20rpx }
 .item-header-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:12rpx }

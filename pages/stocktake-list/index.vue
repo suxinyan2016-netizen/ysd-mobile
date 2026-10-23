@@ -14,9 +14,9 @@
       <view v-else>
         <view v-if="rows.length === 0" class="empty">暂无盘点任务</view>
         <view v-else>
-          <view v-for="row in rows" :key="row.stocktakeId" class="row-card">
+          <view v-for="(row, index) in rows" :key="row.stocktakeId" class="row-card">
             <view class="line1">
-              <text class="sn">SN: {{ row.stocktakeId || '-' }}</text>
+              <text class="sn">{{ index + 1 }}</text>
               <text class="status">{{ mapStatus(row.status) }}</text>
             </view>
             <view class="line2">
@@ -117,7 +117,7 @@ onShow(() => { _handleRefresh() })
 .slot{ color:#666; font-size:24rpx }
 .date{ color:#999; font-size:22rpx }
 .action-row{ display:flex; justify-content:flex-end }
-.entry-btn{ background:#9254de; color:#fff; border:none; padding:12rpx 32rpx; border-radius:8rpx; font-size:24rpx }
+.entry-btn{ background:#36b37e; color:#fff; border:none; padding:12rpx 32rpx; border-radius:8rpx; font-size:24rpx }
 .empty{ text-align:center; color:#999; padding:60rpx 0 }
 .loading{ text-align:center; color:#666 }
 </style>
