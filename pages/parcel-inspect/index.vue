@@ -774,6 +774,13 @@ async function loadItemForm() {
       const idx = categories.value.findIndex(d => (d.dictId == itemForm.value.dictId) || (d.dictName === item.customerFeedback) )
       selectedCategoryIndex.value = idx >= 0 ? idx : -1
     }
+    // set itemSlotIndex based on item.slot
+    if (itemForm.value.slot && Array.isArray(slotOptions.value) && slotOptions.value.length > 0) {
+      const idx = slotOptions.value.findIndex(s => s.slot === itemForm.value.slot)
+      itemSlotIndex.value = idx >= 0 ? idx : 0
+    } else {
+      itemSlotIndex.value = 0
+    }
     console.log('loadItemForm 后 itemForm.iqcResult:', itemForm.value.iqcResult)
 
     // 加载商品图片（此调用会再次设置 itemImages）
